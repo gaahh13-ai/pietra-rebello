@@ -46,6 +46,17 @@
   .card .ico{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#fde4f1,#e3edff);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px}
   .card h3{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--txt)}
   .card p{font-size:14px;color:var(--muted)}
+  .btn-plan{background:var(--pink-soft);color:var(--pink-deep);border:1.5px solid #f6c9df}
+  .btn-plan:hover{background:#fbd9ea}
+  .plan{display:flex;flex-direction:column}
+  .plan h3{font-size:21px;font-weight:800;color:var(--pink-deep);margin-bottom:2px}
+  .plan ul{list-style:none;margin:14px 0 4px;padding:0}
+  .plan li{font-size:14px;color:var(--txt);padding:7px 0 7px 26px;position:relative;border-bottom:1px solid #f6ecf3}
+  .plan li:before{content:"✓";position:absolute;left:0;color:var(--blue-deep);font-weight:800}
+  .plan .plan-desc{font-size:13px;color:var(--muted);font-style:italic;margin:14px 0 0;line-height:1.5}
+  .plan .planbtn{margin-top:auto;display:block;text-align:center;padding-top:11px;padding-bottom:11px}
+  .plan.featured{border:2px solid var(--pink);box-shadow:0 18px 44px rgba(236,72,153,.16);position:relative}
+  .plan .badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(120deg,#f472b6,#818cf8);color:#fff;font-size:11px;font-weight:800;padding:5px 16px;border-radius:999px;white-space:nowrap;letter-spacing:.3px}
   .about{background:rgba(255,255,255,.6);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
   .about .wrap{display:grid;grid-template-columns:.82fr 1.18fr;gap:44px;align-items:center}
   .about .photo{aspect-ratio:4/5;border-radius:22px;background:linear-gradient(150deg,#ffe0ef,#e5eeff);overflow:hidden;border:1px solid #f3c8de;box-shadow:0 14px 36px rgba(180,90,140,.12)}
@@ -86,6 +97,7 @@
     <div class="nav-links">
       <a class="link" href="#sobre">Sobre</a>
       <a class="link" href="#servicos">Serviços</a>
+      <a class="btn btn-plan" href="#planos">💎 Planos</a>
       <button class="btn btn-ghost" onclick="openLogin()">Login</button>
     </div>
   </div>
@@ -122,10 +134,54 @@
   <div class="kicker">Serviços</div>
   <h2>Como posso te ajudar</h2>
   <div class="grid3">
-    <div class="card"><div class="ico">🥗</div><h3>Consulta nutricional</h3><p>Avaliação completa e plano alimentar individualizado para o seu objetivo — saúde, estética ou performance.</p></div>
-    <div class="card"><div class="ico">🏃‍♀️</div><h3>Nutrição esportiva</h3><p>Estratégias de alimentação e suplementação para treino, recuperação e provas (endurance e força).</p></div>
-    <div class="card"><div class="ico">📊</div><h3>Acompanhamento com dashboard</h3><p>Você acompanha sua evolução (peso, composição, sono, adesão) num painel próprio, com reports pelo Telegram.</p></div>
+    <div class="card"><div class="ico">🥗</div><h3>Consulta nutricional</h3><p>Avaliação completa, plano alimentar individualizado e acompanhamento de perto para resultados que fazem sentido para a sua rotina e objetivo.</p></div>
+    <div class="card"><div class="ico">🏃‍♀️</div><h3>Nutrição esportiva</h3><p>Alimentação e suplementação individualizadas para melhorar sua performance, recuperação e resultados, sempre com base na ciência.</p></div>
+    <div class="card"><div class="ico">📊</div><h3>Acompanhamento com dashboard</h3><p>Você acompanha sua evolução (peso, composição, sono, adesão) em um painel próprio, com reports pelo Telegram.</p></div>
   </div>
+</section>
+
+<section id="planos" class="wrap">
+  <div class="kicker">Planos</div>
+  <h2>Escolha o acompanhamento ideal</h2>
+  <div class="grid3" style="margin-top:26px">
+    <div class="card plan">
+      <h3>Mensal</h3>
+      <ul>
+        <li>1 consulta</li>
+        <li>30 dias de suporte via WhatsApp</li>
+        <li>Ajustes sempre que necessário no período</li>
+        <li>Suporte diário</li>
+      </ul>
+      <a class="btn btn-primary planbtn" href="#contato">Fale comigo</a>
+    </div>
+    <div class="card plan">
+      <h3>Trimestral</h3>
+      <ul>
+        <li>3 consultas</li>
+        <li>90 dias de suporte via WhatsApp</li>
+        <li>Consultas a cada 30–45 dias</li>
+        <li>Ajustes sempre que necessário no período</li>
+        <li>Suporte diário</li>
+        <li>Kit exclusivo 🎁</li>
+      </ul>
+      <p class="plan-desc">Perfeito para quem deseja mais constância, acompanhamento de perto e continuidade no processo.</p>
+      <a class="btn btn-primary planbtn" href="#contato">Fale comigo</a>
+    </div>
+    <div class="card plan featured">
+      <div class="badge">★ Melhor opção</div>
+      <h3>Semestral</h3>
+      <ul>
+        <li>6 consultas</li>
+        <li>180 dias de acompanhamento</li>
+        <li>Ajustes sempre que necessário no período</li>
+        <li>Suporte diário e prioritário</li>
+        <li>Kit exclusivo 🎁</li>
+      </ul>
+      <p class="plan-desc">A melhor opção para quem deseja viver uma transformação com mais profundidade, acompanhamento contínuo e estratégia a longo prazo.</p>
+      <a class="btn btn-primary planbtn" href="#contato">Fale comigo</a>
+    </div>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:18px;font-size:13px">Valores sob consulta — me chame para montarmos juntos o plano ideal para você 💗</p>
 </section>
 
 <section class="wrap">
