@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pietra Rebello — Nutricionista</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f5fbf8; --card:#ffffff; --line:#dceae2; --txt:#173a30; --muted:#5c7d70;
+    --accent:#0d9488; --accent2:#16a34a; --coral:#fb7185; --sand:#fef3e2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  /* Top bar */
+  nav{position:sticky;top:0;z-index:20;background:rgba(245,251,248,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:66px}
+  .brand{font-weight:800;font-size:18px;letter-spacing:.2px;color:var(--txt)}
+  .brand span{color:var(--accent)}
+  .nav-links{display:flex;align-items:center;gap:18px}
+  .nav-links a.link{font-size:14px;color:var(--muted);font-weight:600}
+  .nav-links a.link:hover{color:var(--accent)}
+  .btn{display:inline-block;border-radius:12px;font-weight:700;font-size:14px;padding:10px 20px;cursor:pointer;border:none;transition:.15s}
+  .btn-primary{background:linear-gradient(120deg,#0d9488,#16a34a);color:#fff}
+  .btn-primary:hover{filter:brightness(1.05)}
+  .btn-ghost{background:#fff;border:1.5px solid var(--accent);color:var(--accent)}
+  .btn-ghost:hover{background:#effaf6}
+  /* Hero */
+  header.hero{padding:70px 0 60px;background:radial-gradient(1000px 400px at 80% -10%,#e6f5ec,transparent),var(--bg)}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+  .eyebrow{display:inline-block;background:var(--sand);color:#b45309;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
+  h1{font-size:40px;line-height:1.15;margin:16px 0 14px;font-weight:800;letter-spacing:-.5px}
+  h1 span{color:var(--accent)}
+  .lead{font-size:17px;color:var(--muted);max-width:520px}
+  .hero-cta{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+  .avatar{aspect-ratio:1;border-radius:24px;background:linear-gradient(135deg,#0d9488,#22c55e);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 20px 50px rgba(13,148,136,.25);position:relative;overflow:hidden}
+  .avatar .ph{font-size:15px;opacity:.9;text-align:center;padding:20px}
+  .avatar .initials{font-size:72px;font-weight:800}
+  /* Sections */
+  section{padding:56px 0}
+  .kicker{color:var(--accent);font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.6px}
+  h2{font-size:28px;font-weight:800;margin:8px 0 18px;letter-spacing:-.3px}
+  .muted{color:var(--muted)}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 6px 18px rgba(16,90,70,.05)}
+  .card .ico{width:44px;height:44px;border-radius:12px;background:#effaf6;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+  .card h3{font-size:16px;font-weight:700;margin-bottom:6px}
+  .card p{font-size:14px;color:var(--muted)}
+  .about{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .about .wrap{display:grid;grid-template-columns:.85fr 1.15fr;gap:40px;align-items:center}
+  .about .photo{aspect-ratio:4/5;border-radius:20px;background:linear-gradient(135deg,#eef6f0,#e6f5ec);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;padding:20px;border:1px dashed var(--line)}
+  .cta-band{background:linear-gradient(120deg,#0d9488,#16a34a);color:#fff;border-radius:24px;padding:44px;text-align:center;margin:20px 0}
+  .cta-band h2{color:#fff}
+  .cta-band p{color:rgba(255,255,255,.9);max-width:520px;margin:0 auto 22px}
+  .cta-band .btn-primary{background:#fff;color:var(--accent)}
+  footer{border-top:1px solid var(--line);padding:30px 0;color:var(--muted);font-size:13px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .ph-tag{background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;border:1px solid #fed7aa}
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(16,40,32,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:20px;max-width:400px;width:100%;padding:30px;box-shadow:0 30px 70px rgba(0,0,0,.25)}
+  .modal h3{font-size:20px;font-weight:800;margin-bottom:4px}
+  .modal .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+  .modal .btn-primary{width:100%;margin-top:6px}
+  .modal .note{margin-top:14px;font-size:12px;color:var(--muted);text-align:center;background:#f2faf5;border-radius:10px;padding:10px}
+  .modal .close{float:right;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+  @media(max-width:760px){
+    .hero .wrap,.about .wrap{grid-template-columns:1fr}
+    .grid3{grid-template-columns:1fr}
+    h1{font-size:32px}
+    .nav-links a.link{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">Pietra <span>Rebello</span></div>
+    <div class="nav-links">
+      <a class="link" href="#sobre">Sobre</a>
+      <a class="link" href="#servicos">Serviços</a>
+      <button class="btn btn-ghost" onclick="openLogin()">Login</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Nutrição Clínica &amp; Esportiva</span>
+      <h1>Nutrição que <span>acompanha você</span> além da consulta</h1>
+      <p class="lead">Sou <b>Pietra Rebello</b>, nutricionista (CRN 24103700). Ajudo você a alcançar seus objetivos de saúde e performance com um plano individualizado — e acompanhamento de verdade, com números e evolução na palma da mão.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#contato">💬 Fale comigo</a>
+        <a class="btn btn-ghost" href="#servicos">Ver serviços</a>
+      </div>
+    </div>
+    <div class="avatar">
+      <div class="ph"><div class="initials">PR</div><span class="ph-tag">foto da Pietra (placeholder)</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="sobre" class="about">
+  <div class="wrap">
+    <div class="photo">Foto / imagem da Pietra<br><span class="ph-tag">placeholder</span></div>
+    <div>
+      <div class="kicker">Sobre</div>
+      <h2>Quem cuida da sua alimentação</h2>
+      <p class="muted" style="margin-bottom:12px">Pietra Rebello é nutricionista com foco em <b>nutrição clínica e esportiva</b>. Une ciência, individualização e um acompanhamento próximo para que cada paciente entenda o próprio corpo e evolua de forma consistente e sustentável. <span class="ph-tag">bio a completar com a Pietra</span></p>
+      <p class="muted">Atendimento presencial e online. Planos alimentares personalizados, com opções e substituições reais para o seu dia a dia.</p>
+    </div>
+  </div>
+</section>
+
+<section id="servicos" class="wrap">
+  <div class="kicker">Serviços</div>
+  <h2>Como posso te ajudar</h2>
+  <div class="grid3">
+    <div class="card"><div class="ico">🥗</div><h3>Consulta nutricional</h3><p>Avaliação completa e plano alimentar individualizado para o seu objetivo — saúde, estética ou performance.</p></div>
+    <div class="card"><div class="ico">🏃</div><h3>Nutrição esportiva</h3><p>Estratégias de alimentação e suplementação para treino, recuperação e provas (endurance e força).</p></div>
+    <div class="card"><div class="ico">📊</div><h3>Acompanhamento com dashboard</h3><p>Você acompanha sua evolução (peso, composição, sono, adesão) num painel próprio, com reports pelo Telegram.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="cta-band" id="contato">
+    <h2>Pronto para começar?</h2>
+    <p>Me chame para uma conversa e vamos montar juntos o seu plano.</p>
+    <a class="btn btn-primary" href="https://instagram.com/nutripietrarebello" target="_blank" rel="noopener">💬 Fale comigo no Instagram</a>
+    <div style="margin-top:14px;font-size:12px;color:rgba(255,255,255,.85)">📱 WhatsApp: <span class="ph-tag" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.4)">adicionar número</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>Pietra Rebello · Nutricionista · CRN 24103700</div>
+    <div><a href="https://instagram.com/nutripietrarebello" target="_blank" rel="noopener">@nutripietrarebello</a> · Área do aluno via <b>Login</b></div>
+  </div>
+</footer>
+
+<!-- Login modal (placeholder) -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <span class="close" onclick="closeLogin()">×</span>
+    <h3>Área do aluno</h3>
+    <div class="sub">Entre com suas credenciais para acessar seu dashboard.</div>
+    <div class="field"><label>E-mail</label><input type="email" placeholder="voce@email.com"></div>
+    <div class="field"><label>Senha</label><input type="password" placeholder="••••••••"></div>
+    <button class="btn btn-primary" onclick="fakeLogin()">Entrar</button>
+    <div class="note">🔒 O login ainda está em construção. Em breve os alunos da Pietra acessarão o dashboard por aqui. <br><a href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank" style="color:var(--accent);font-weight:700">Ver exemplo do dashboard →</a></div>
+  </div>
+</div>
+
+<script>
+  function openLogin(){document.getElementById('loginModal').classList.add('open')}
+  function closeLogin(){document.getElementById('loginModal').classList.remove('open')}
+  function fakeLogin(){alert('O login ainda não está ativo — será conectado ao sistema de acesso dos alunos. Por enquanto, veja o exemplo do dashboard no link abaixo.')}
+  document.getElementById('loginModal').addEventListener('click',function(e){if(e.target===this)closeLogin()});
+</script>
+</body>
+</html>
