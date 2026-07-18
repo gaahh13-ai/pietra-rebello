@@ -13,10 +13,7 @@
   .card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 60px rgba(180,90,140,.14);width:100%;max-width:400px;padding:34px}
   .logo{height:34px;display:block;margin:0 auto 18px}
   h1{font-size:20px;font-weight:800;text-align:center;margin-bottom:4px}
-  .sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:20px}
-  .tabs{display:flex;background:#f6eef4;border-radius:12px;padding:4px;margin-bottom:18px}
-  .tabs button{flex:1;border:none;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer}
-  .tabs button.active{background:#fff;color:var(--pink-deep);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+  .sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:20px;line-height:1.45}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
   .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:14px}
@@ -24,8 +21,10 @@
   .btn{width:100%;border:none;border-radius:14px;padding:13px;font-weight:800;font-size:15px;color:#fff;cursor:pointer;
     background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 8px 20px rgba(236,72,153,.22);margin-top:6px}
   .btn:disabled{opacity:.6;cursor:default}
-  .forgot{display:block;text-align:center;margin-top:12px;font-size:13px;color:var(--pink-deep);font-weight:600;text-decoration:none;cursor:pointer}
-  .msg{margin-top:14px;font-size:13px;text-align:center;padding:10px;border-radius:10px;display:none;line-height:1.4}
+  .links{display:flex;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .link{font-size:13px;color:var(--pink-deep);font-weight:600;text-decoration:none;cursor:pointer}
+  .link.muted{color:var(--muted);font-weight:500}
+  .msg{margin-top:14px;font-size:13px;text-align:center;padding:10px;border-radius:10px;display:none;line-height:1.45}
   .msg.err{display:block;background:#fdecec;color:#c0392b}
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
   .back{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--muted);text-decoration:none}
@@ -34,32 +33,29 @@
 <body>
 <div class="card">
   <a href="index.html" style="display:block"><img class="logo" src="logo.png" alt="Pietra Rebello"></a>
-  <h1>Área do aluno</h1>
-  <div class="sub">Acompanhe sua evolução com a Pietra.</div>
 
-  <div class="tabs">
-    <button id="tabLogin" class="active" onclick="setMode('login')">Entrar</button>
-    <button id="tabSignup" onclick="setMode('signup')">Criar conta</button>
+  <!-- MODO: ENTRAR -->
+  <div id="viewLogin">
+    <h1>Área do aluno</h1>
+    <div class="sub">Acompanhe sua evolução com a Pietra.</div>
+    <div class="field"><label>E-mail</label><input id="email" type="email" placeholder="voce@email.com" autocomplete="email"></div>
+    <div class="field"><label>Senha</label><input id="password" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn" id="loginBtn" onclick="entrar()">Entrar</button>
+    <div class="links">
+      <a class="link" onclick="showView('first')">Primeiro acesso</a>
+      <a class="link muted" onclick="esqueci()">Esqueci minha senha</a>
+    </div>
   </div>
 
-  <div class="field" id="nameField" style="display:none">
-    <label>Nome completo</label>
-    <input id="name" type="text" placeholder="Seu nome">
+  <!-- MODO: PRIMEIRO ACESSO -->
+  <div id="viewFirst" style="display:none">
+    <h1>Primeiro acesso</h1>
+    <div class="sub">Digite o e-mail que seu profissional cadastrou. Enviaremos um link de acesso para você entrar e criar sua senha.</div>
+    <div class="field"><label>E-mail</label><input id="emailFirst" type="email" placeholder="voce@email.com" autocomplete="email"></div>
+    <button class="btn" id="firstBtn" onclick="primeiroAcesso()">Enviar link de acesso</button>
+    <div class="links"><a class="link muted" onclick="showView('login')">← Voltar para entrar</a></div>
   </div>
-  <div class="field">
-    <label>E-mail</label>
-    <input id="email" type="email" placeholder="voce@email.com" autocomplete="email">
-  </div>
-  <div class="field">
-    <label>Senha</label>
-    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
-  </div>
-  <div class="field" id="password2Field" style="display:none">
-    <label>Confirmar senha</label>
-    <input id="password2" type="password" placeholder="••••••••">
-  </div>
-  <button class="btn" id="submitBtn" onclick="submit()">Entrar</button>
-  <a class="forgot" id="forgotLink" onclick="forgot()">Esqueci minha senha</a>
+
   <div class="msg" id="msg"></div>
   <a class="back" href="index.html">← Voltar ao site</a>
 </div>
@@ -67,72 +63,76 @@
 <script>
   const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
+  const APP_URL   = "https://gaahh13-ai.github.io/pietra-rebello/app.html";
   const RESET_URL = "https://gaahh13-ai.github.io/pietra-rebello/reset.html";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  let mode = "login";
 
   sb.auth.getSession().then(({data})=>{ if(data.session) location.href = "app.html"; });
 
-  function setMode(m){
-    mode = m;
-    document.getElementById("tabLogin").classList.toggle("active", m==="login");
-    document.getElementById("tabSignup").classList.toggle("active", m==="signup");
-    document.getElementById("nameField").style.display = m==="signup" ? "block" : "none";
-    document.getElementById("password2Field").style.display = m==="signup" ? "block" : "none";
-    document.getElementById("forgotLink").style.display = m==="login" ? "block" : "none";
-    document.getElementById("submitBtn").textContent = m==="signup" ? "Criar conta" : "Entrar";
-    showMsg("");
-  }
   function showMsg(text, ok){
     const el = document.getElementById("msg");
     el.className = "msg" + (text ? (ok ? " ok" : " err") : "");
     el.textContent = text;
   }
-  async function submit(){
+  function showView(v){
+    document.getElementById("viewLogin").style.display = v==="login" ? "block" : "none";
+    document.getElementById("viewFirst").style.display = v==="first" ? "block" : "none";
+    showMsg("");
+  }
+
+  async function entrar(){
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
-    const name = document.getElementById("name").value.trim();
-    const btn = document.getElementById("submitBtn");
+    const btn = document.getElementById("loginBtn");
     if(!email || !password){ showMsg("Preencha e-mail e senha."); return; }
-    if(mode === "signup"){
-      const p2 = document.getElementById("password2").value;
-      if(password.length < 6){ showMsg("A senha precisa ter ao menos 6 caracteres."); return; }
-      if(password !== p2){ showMsg("As senhas não coincidem — confira e tente de novo."); return; }
-    }
     btn.disabled = true; showMsg("");
     try{
-      if(mode === "signup"){
-        const { data, error } = await sb.auth.signUp({ email, password, options:{ data:{ full_name:name } } });
-        if(error) throw error;
-        if(data.session){ location.href = "app.html"; }
-        else { showMsg("Conta criada! Verifique seu e-mail para confirmar e depois faça login.", true); setMode("login"); }
-      } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if(error) throw error;
-        location.href = "app.html";
-      }
-    } catch(e){ showMsg(traduz(e.message || "Erro ao entrar.")); }
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      location.href = "app.html";
+    } catch(e){ showMsg(traduz(e.message)); }
     finally { btn.disabled = false; }
   }
-  async function forgot(){
+
+  async function primeiroAcesso(){
+    const email = document.getElementById("emailFirst").value.trim();
+    const btn = document.getElementById("firstBtn");
+    if(!email){ showMsg("Digite seu e-mail."); return; }
+    btn.disabled = true; showMsg("Verificando…");
+    try{
+      const { data: invited, error: e1 } = await sb.rpc("is_invited", { p_email: email });
+      if(e1) throw e1;
+      if(!invited){
+        showMsg("Este e-mail ainda não foi liberado. Peça para seu profissional cadastrá-lo no painel dele.");
+        btn.disabled = false; return;
+      }
+      const { error: e2 } = await sb.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true, emailRedirectTo: APP_URL }
+      });
+      if(e2) throw e2;
+      showMsg("Pronto! Enviamos um link de acesso para " + email + ". Abra seu e-mail (confira o spam) e clique para entrar.", true);
+    } catch(e){ showMsg(traduz(e.message)); btn.disabled = false; }
+  }
+
+  async function esqueci(){
     const email = document.getElementById("email").value.trim();
     if(!email){ showMsg("Digite seu e-mail no campo acima e clique em \"Esqueci minha senha\"."); return; }
     showMsg("Enviando…");
     try{
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: RESET_URL });
       if(error) throw error;
-      showMsg("Enviamos um link de redefinição para " + email + ". Confira sua caixa de entrada (e o spam) e crie uma senha nova.", true);
+      showMsg("Enviamos um link para redefinir sua senha em " + email + ". Confira sua caixa de entrada (e o spam).", true);
     } catch(e){ showMsg(traduz(e.message)); }
   }
+
   function traduz(m){
-    if(/Invalid login/i.test(m)) return "E-mail ou senha incorretos.";
+    if(/Invalid login/i.test(m)) return "E-mail ou senha incorretos. Se é seu primeiro acesso, use \"Primeiro acesso\".";
     if(/Email not confirmed/i.test(m)) return "Confirme seu e-mail antes de entrar.";
-    if(/already registered/i.test(m)) return "Este e-mail já tem conta. Use 'Entrar' ou 'Esqueci minha senha'.";
-    if(/at least 6/i.test(m)) return "A senha precisa ter ao menos 6 caracteres.";
-    if(/rate limit|too many/i.test(m)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
-    return m;
+    if(/rate limit|too many|after/i.test(m)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+    return m || "Ocorreu um erro. Tente de novo.";
   }
-  document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") submit(); });
+  document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") entrar(); });
 </script>
 </body>
 </html>

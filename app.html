@@ -65,7 +65,8 @@
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   let ME = null;            // meu profile
-  let STUDENTS = [];        // alunos do profissional
+  let STUDENTS = [];        // alunos do profissional (já entraram)
+  let INVITES = [];         // e-mails cadastrados (convites)
   let ASSESS = [];          // avaliações dos meus alunos
 
   async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
@@ -108,47 +109,46 @@
         <h3>📊 Seu dashboard</h3>
         <p>Acompanhe sua evolução — peso, composição, sono, adesão — e envie seus reports pelo Telegram.</p>
         <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
-      </div>`;
-    if(!linked){
-      h += `
+      </div>
       <div class="card">
-        <h3>🔗 Conectar ao meu profissional</h3>
-        <p>Cole o <b>código de convite</b> que sua nutricionista/personal te enviou para liberar o acompanhamento.</p>
-        <div class="field" style="margin-top:12px"><input id="linkCode" type="text" placeholder="cole o código aqui"></div>
-        <button class="btn small" onclick="vincular()">Conectar</button>
-        <div class="msg" id="linkMsg"></div>
+        <h3>🔐 Minha senha de acesso</h3>
+        <p>Defina (ou altere) sua senha para entrar na próxima vez direto com e-mail e senha.</p>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Nova senha</label><input id="np1" type="password" placeholder="mín. 6 caracteres"></div>
+          <div class="field"><label>Confirmar senha</label><input id="np2" type="password" placeholder="repita a senha"></div>
+        </div>
+        <button class="btn small" id="pwBtn" onclick="definirSenha()">Salvar senha</button>
+        <div class="msg" id="pwMsg"></div>
       </div>`;
-    } else {
-      h += `<div class="card"><h3>✅ Acompanhamento ativo</h3><p>Você já está conectado ao seu profissional. Suas avaliações aparecerão no seu dashboard.</p></div>`;
+    if(linked){
+      h += `<div class="card"><h3>✅ Acompanhamento ativo</h3><p>Você está conectado ao seu profissional. As avaliações lançadas por ele aparecerão aqui.</p></div>`;
     }
     return h;
   }
 
-  async function vincular(){
-    const code = document.getElementById("linkCode").value.trim();
-    const msg = document.getElementById("linkMsg");
-    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if(!uuid.test(code)){ msg.className="msg err"; msg.textContent="Código inválido. Confira com seu profissional."; return; }
-    if(code === ME.id){ msg.className="msg err"; msg.textContent="Esse é o seu próprio código."; return; }
-    msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("profiles").update({ professional_id: code }).eq("id", ME.id);
-    if(error){ msg.className="msg err"; msg.textContent="Não deu certo: "+error.message; return; }
-    msg.className="msg ok"; msg.textContent="Conectado! Atualizando…";
-    ME.professional_id = code;
-    setTimeout(()=>{ document.getElementById("content").innerHTML = studentHTML(); }, 900);
+  async function definirSenha(){
+    const p1 = document.getElementById("np1").value, p2 = document.getElementById("np2").value;
+    const msg = document.getElementById("pwMsg"), btn = document.getElementById("pwBtn");
+    if(p1.length < 6){ msg.className="msg err"; msg.textContent="A senha precisa ter ao menos 6 caracteres."; return; }
+    if(p1 !== p2){ msg.className="msg err"; msg.textContent="As senhas não coincidem."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
+    msg.className="msg ok"; msg.textContent="Senha salva! Já pode entrar com e-mail e senha.";
+    document.getElementById("np1").value=""; document.getElementById("np2").value="";
   }
 
   /* ---------------- PROFISSIONAL ---------------- */
   function professionalHTML(){
     return `
       <div class="card">
-        <h3>🔗 Código de convite</h3>
-        <p>Envie este código para seus alunos. Eles criam a conta na página de login e colam o código para se conectar a você.</p>
-        <div class="code-box">
-          <code id="inviteCode">${esc(ME.id)}</code>
-          <button class="btn small ghost" onclick="copiarCodigo()">Copiar</button>
-        </div>
-        <div class="msg" id="copyMsg"></div>
+        <h3>➕ Cadastrar aluno</h3>
+        <p>Cadastre o e-mail do aluno. Só depois disso ele consegue fazer o "primeiro acesso" na página de login e receber o link de acesso.</p>
+        <div class="field" style="margin-top:12px"><input id="inviteEmail" type="email" placeholder="email-do-aluno@exemplo.com"></div>
+        <button class="btn small" id="inviteBtn" onclick="cadastrarAluno()">Cadastrar e-mail</button>
+        <div class="msg" id="inviteMsg"></div>
+        <div id="invitesBox" style="margin-top:14px"></div>
       </div>
 
       <div class="card">
@@ -178,11 +178,52 @@
       + professionalHTML();
   }
 
-  function copiarCodigo(){
-    navigator.clipboard.writeText(ME.id).then(()=>{
-      const m=document.getElementById("copyMsg"); m.className="msg ok"; m.textContent="Código copiado!";
-      setTimeout(()=>{m.className="msg";m.textContent="";},1800);
-    });
+  async function cadastrarAluno(){
+    const emailRaw = document.getElementById("inviteEmail").value.trim();
+    const email = emailRaw.toLowerCase();
+    const msg = document.getElementById("inviteMsg"), btn = document.getElementById("inviteBtn");
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className="msg err"; msg.textContent="Digite um e-mail válido."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("invites").insert({ email, professional_id: ME.id });
+    btn.disabled=false;
+    if(error){
+      if(/duplicate|unique/i.test(error.message)){ msg.className="msg err"; msg.textContent="Esse e-mail já está cadastrado."; }
+      else { msg.className="msg err"; msg.textContent="Erro: "+error.message; }
+      return;
+    }
+    msg.className="msg ok"; msg.textContent="E-mail cadastrado! Agora o aluno pode fazer o primeiro acesso.";
+    document.getElementById("inviteEmail").value="";
+    loadInvites();
+  }
+
+  async function loadInvites(){
+    const { data } = await sb.from("invites").select("*").eq("professional_id", ME.id).order("created_at",{ascending:false});
+    INVITES = data || [];
+    renderInvites();
+  }
+
+  function renderInvites(){
+    const box = document.getElementById("invitesBox");
+    if(!box) return;
+    if(INVITES.length === 0){ box.innerHTML = `<div class="empty">Nenhum e-mail cadastrado ainda.</div>`; return; }
+    const joined = new Set(STUDENTS.map(s=>(s.email||"").toLowerCase()));
+    box.innerHTML = INVITES.map(iv=>{
+      const ativo = joined.has(iv.email.toLowerCase());
+      const status = ativo
+        ? `<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">ativo</span>`
+        : `<span class="tag">aguardando 1º acesso</span>`;
+      return `<div class="student-row">
+        <div><div class="name">${esc(iv.email)}</div><div class="meta">${status}</div></div>
+        <div class="row-actions"><button class="btn small ghost" onclick="removerConvite('${esc(iv.email)}')">Remover</button></div>
+      </div>`;
+    }).join("");
+  }
+
+  async function removerConvite(email){
+    if(!confirm("Remover o cadastro de "+email+"? (não apaga a conta já criada, só o cadastro do e-mail)")) return;
+    const { error } = await sb.from("invites").delete().eq("email", email).eq("professional_id", ME.id);
+    if(error){ alert("Erro ao remover: "+error.message); return; }
+    loadInvites();
   }
 
   async function loadStudents(){
@@ -193,6 +234,7 @@
     const { data: ast } = await sb.from("assessments").select("id,student_id,date,weight,body_fat").order("date",{ascending:false});
     ASSESS = ast || [];
     renderStudents();
+    loadInvites();
   }
 
   function renderStudents(){
@@ -203,10 +245,11 @@
       return;
     }
     box.innerHTML = STUDENTS.map(s=>{
-      const nome = s.full_name || ("Aluno "+shortId(s.id));
+      const nome = s.full_name || s.email || ("Aluno "+shortId(s.id));
       const n = ASSESS.filter(a=>a.student_id===s.id).length;
+      const sub = (s.email && s.email!==nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
       return `<div class="student-row">
-        <div><div class="name">${esc(nome)}</div><div class="meta">${n} avaliação(ões)</div></div>
+        <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
         <div class="row-actions">
           <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
           <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
