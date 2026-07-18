@@ -24,10 +24,33 @@
   .card p{font-size:14px;color:var(--muted);line-height:1.55}
   .btn{display:inline-block;border:none;border-radius:12px;padding:11px 20px;font-weight:700;font-size:14px;color:#fff;cursor:pointer;text-decoration:none;
     background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 6px 16px rgba(236,72,153,.2);margin-top:8px}
+  .btn.small{padding:8px 14px;font-size:13px;box-shadow:none}
+  .btn.ghost{background:#fff;color:var(--pink-deep);border:1.5px solid var(--line)}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:640px){.grid{grid-template-columns:1fr}}
   .tag{display:inline-block;background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid #fed7aa}
   #loading{text-align:center;padding:80px 20px;color:var(--muted)}
+  .code-box{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .code-box code{background:#faf3f8;border:1px dashed var(--pink);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--pink-deep);word-break:break-all;flex:1;min-width:200px}
+  .student-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .student-row:last-child{border-bottom:none}
+  .student-row .name{font-weight:700;font-size:14px}
+  .student-row .meta{font-size:12px;color:var(--muted)}
+  .row-actions{display:flex;gap:8px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid #f9a8d4;border-color:#f9a8d4}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+  .msg{margin-top:10px;font-size:13px;padding:9px 11px;border-radius:9px;display:none;line-height:1.4}
+  .msg.err{display:block;background:#fdecec;color:#c0392b}
+  .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
+  .empty{font-size:13px;color:var(--muted);padding:8px 0}
+  .assess-item{font-size:13px;color:var(--txt);padding:8px 0;border-bottom:1px dashed var(--line)}
+  .assess-item:last-child{border-bottom:none}
+  .assess-item b{color:var(--pink-deep)}
+  .close-x{float:right;cursor:pointer;color:var(--muted);font-weight:800;font-size:18px;line-height:1}
 </style>
 </head>
 <body>
@@ -41,56 +64,204 @@
   const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  let ME = null;            // meu profile
+  let STUDENTS = [];        // alunos do profissional
+  let ASSESS = [];          // avaliações dos meus alunos
 
   async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
-  function esc(s){return String(s||"").replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
+  function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+  function fmtDate(d){ if(!d) return "—"; const p=String(d).slice(0,10).split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
+  function shortId(id){ return String(id||"").slice(0,8); }
 
   async function init(){
     const { data:{ session } } = await sb.auth.getSession();
     if(!session){ location.href = "login.html"; return; }
     const user = session.user;
     let { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
-    if(!profile){ profile = { role:"student", full_name:null }; }
-    render(user, profile);
+    if(!profile){ profile = { id:user.id, role:"student", full_name:null, professional_id:null }; }
+    ME = { ...profile, email:user.email };
+    render();
   }
 
-  function render(user, p){
-    const nome = p.full_name || user.email;
-    const role = p.role || "student";
+  function render(){
+    const nome = ME.full_name || ME.email;
+    const role = ME.role || "student";
     const rotulo = {creator:"Criador", professional:"Profissional", student:"Aluno"}[role] || role;
-    let html = `<div class="hello">Olá, ${esc(nome)} 👋</div>
-      <div class="role-chip chip-${role}">${rotulo}</div>`;
+    let html = `<div class="hello">Olá, ${esc(nome)} 👋</div><div class="role-chip chip-${role}">${rotulo}</div>`;
 
-    if(role === "student"){
-      html += `
-      <div class="card">
-        <h3>📊 Seu dashboard</h3>
-        <p>Acompanhe sua evolução — peso, composição, sono, adesão — e envie seus reports pelo Telegram.</p>
-        <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
-        <p style="margin-top:10px"><span class="tag">em breve: seu dashboard individual, com seus próprios dados</span></p>
-      </div>`;
-    }
-    else if(role === "professional"){
-      html += `
-      <div class="grid">
-        <div class="card"><h3>👥 Meus alunos</h3><p>Gerencie seus alunos: adicionar, remover e acompanhar cada um.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-        <div class="card"><h3>➕ Nova avaliação</h3><p>Lance avaliações (peso, composição, dobras, perímetros) para alimentar os gráficos do aluno.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-        <div class="card"><h3>🎯 Metas</h3><p>Defina peso ideal, % de gordura, data alvo e próxima consulta de cada aluno.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-        <div class="card"><h3>📝 Minha página</h3><p>Edite os textos da sua página pública (sobre, serviços, planos).</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-      </div>`;
-    }
-    else if(role === "creator"){
-      html += `
-      <div class="card"><h3>🛠️ Painel do criador</h3><p>Você tem acesso total à estrutura: profissionais, alunos, dados e configurações.</p></div>
-      <div class="grid">
-        <div class="card"><h3>👩‍⚕️ Profissionais</h3><p>Gerenciar nutricionistas/personais cadastrados.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-        <div class="card"><h3>👥 Todos os alunos</h3><p>Visão de todos os pacientes da plataforma.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
-      </div>`;
-    }
+    if(role === "student")            html += studentHTML();
+    else if(role === "professional")  html += professionalHTML();
+    else if(role === "creator")       html += creatorHTML();
 
     document.getElementById("content").innerHTML = html;
     document.getElementById("loading").style.display = "none";
     document.getElementById("content").style.display = "block";
+
+    if(role === "professional" || role === "creator") loadStudents();
+  }
+
+  /* ---------------- ALUNO ---------------- */
+  function studentHTML(){
+    const linked = !!ME.professional_id;
+    let h = `
+      <div class="card">
+        <h3>📊 Seu dashboard</h3>
+        <p>Acompanhe sua evolução — peso, composição, sono, adesão — e envie seus reports pelo Telegram.</p>
+        <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
+      </div>`;
+    if(!linked){
+      h += `
+      <div class="card">
+        <h3>🔗 Conectar ao meu profissional</h3>
+        <p>Cole o <b>código de convite</b> que sua nutricionista/personal te enviou para liberar o acompanhamento.</p>
+        <div class="field" style="margin-top:12px"><input id="linkCode" type="text" placeholder="cole o código aqui"></div>
+        <button class="btn small" onclick="vincular()">Conectar</button>
+        <div class="msg" id="linkMsg"></div>
+      </div>`;
+    } else {
+      h += `<div class="card"><h3>✅ Acompanhamento ativo</h3><p>Você já está conectado ao seu profissional. Suas avaliações aparecerão no seu dashboard.</p></div>`;
+    }
+    return h;
+  }
+
+  async function vincular(){
+    const code = document.getElementById("linkCode").value.trim();
+    const msg = document.getElementById("linkMsg");
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if(!uuid.test(code)){ msg.className="msg err"; msg.textContent="Código inválido. Confira com seu profissional."; return; }
+    if(code === ME.id){ msg.className="msg err"; msg.textContent="Esse é o seu próprio código."; return; }
+    msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("profiles").update({ professional_id: code }).eq("id", ME.id);
+    if(error){ msg.className="msg err"; msg.textContent="Não deu certo: "+error.message; return; }
+    msg.className="msg ok"; msg.textContent="Conectado! Atualizando…";
+    ME.professional_id = code;
+    setTimeout(()=>{ document.getElementById("content").innerHTML = studentHTML(); }, 900);
+  }
+
+  /* ---------------- PROFISSIONAL ---------------- */
+  function professionalHTML(){
+    return `
+      <div class="card">
+        <h3>🔗 Código de convite</h3>
+        <p>Envie este código para seus alunos. Eles criam a conta na página de login e colam o código para se conectar a você.</p>
+        <div class="code-box">
+          <code id="inviteCode">${esc(ME.id)}</code>
+          <button class="btn small ghost" onclick="copiarCodigo()">Copiar</button>
+        </div>
+        <div class="msg" id="copyMsg"></div>
+      </div>
+
+      <div class="card">
+        <h3>👥 Meus alunos</h3>
+        <div id="studentsBox"><div class="empty">Carregando alunos…</div></div>
+      </div>
+
+      <div class="card" id="assessCard" style="display:none">
+        <span class="close-x" onclick="fecharForm()">✕</span>
+        <h3>➕ Nova avaliação — <span id="assessStudentName"></span></h3>
+        <input type="hidden" id="assessStudentId">
+        <div class="form-grid">
+          <div class="field"><label>Data</label><input id="a_date" type="date"></div>
+          <div class="field"><label>Peso (kg)</label><input id="a_weight" type="number" step="0.1" placeholder="ex: 68.5"></div>
+          <div class="field"><label>% Gordura</label><input id="a_bf" type="number" step="0.1" placeholder="ex: 14.2"></div>
+          <div class="field"><label>Massa magra (kg)</label><input id="a_lean" type="number" step="0.1" placeholder="opcional"></div>
+          <div class="field"><label>Massa gorda (kg)</label><input id="a_fat" type="number" step="0.1" placeholder="opcional"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="a_notes" rows="2" placeholder="opcional"></textarea></div>
+        <button class="btn small" id="assessSaveBtn" onclick="salvarAvaliacao()">Salvar avaliação</button>
+        <div class="msg" id="assessMsg"></div>
+      </div>`;
+  }
+
+  function creatorHTML(){
+    return `<div class="card"><h3>🛠️ Painel do criador</h3><p>Acesso total à estrutura. Abaixo você também vê a visão de profissional (alunos vinculados a você).</p></div>`
+      + professionalHTML();
+  }
+
+  function copiarCodigo(){
+    navigator.clipboard.writeText(ME.id).then(()=>{
+      const m=document.getElementById("copyMsg"); m.className="msg ok"; m.textContent="Código copiado!";
+      setTimeout(()=>{m.className="msg";m.textContent="";},1800);
+    });
+  }
+
+  async function loadStudents(){
+    const box = document.getElementById("studentsBox");
+    const { data: studs, error } = await sb.from("profiles").select("*").eq("professional_id", ME.id);
+    if(error){ if(box) box.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`; return; }
+    STUDENTS = studs || [];
+    const { data: ast } = await sb.from("assessments").select("id,student_id,date,weight,body_fat").order("date",{ascending:false});
+    ASSESS = ast || [];
+    renderStudents();
+  }
+
+  function renderStudents(){
+    const box = document.getElementById("studentsBox");
+    if(!box) return;
+    if(STUDENTS.length === 0){
+      box.innerHTML = `<div class="empty">Nenhum aluno conectado ainda. Compartilhe seu código de convite acima.</div>`;
+      return;
+    }
+    box.innerHTML = STUDENTS.map(s=>{
+      const nome = s.full_name || ("Aluno "+shortId(s.id));
+      const n = ASSESS.filter(a=>a.student_id===s.id).length;
+      return `<div class="student-row">
+        <div><div class="name">${esc(nome)}</div><div class="meta">${n} avaliação(ões)</div></div>
+        <div class="row-actions">
+          <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
+          <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
+        </div>
+        <div id="assessList_${s.id}" style="width:100%"></div>
+      </div>`;
+    }).join("");
+  }
+
+  function verAvaliacoes(id){
+    const el = document.getElementById("assessList_"+id);
+    if(!el) return;
+    if(el.innerHTML){ el.innerHTML=""; return; }
+    const list = ASSESS.filter(a=>a.student_id===id);
+    if(list.length===0){ el.innerHTML = `<div class="assess-item">Sem avaliações ainda.</div>`; return; }
+    el.innerHTML = list.map(a=>`<div class="assess-item">${fmtDate(a.date)} — <b>${a.weight??"—"} kg</b>${a.body_fat!=null?` · ${a.body_fat}% gordura`:""}</div>`).join("");
+  }
+
+  function novaAvaliacao(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    document.getElementById("assessStudentId").value = id;
+    document.getElementById("assessStudentName").textContent = s ? (s.full_name || ("Aluno "+shortId(id))) : "";
+    document.getElementById("a_date").value = new Date().toISOString().slice(0,10);
+    ["a_weight","a_bf","a_lean","a_fat","a_notes"].forEach(f=>document.getElementById(f).value="");
+    const card = document.getElementById("assessCard");
+    card.style.display="block";
+    document.getElementById("assessMsg").className="msg";
+    document.getElementById("assessMsg").textContent="";
+    card.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function fecharForm(){ document.getElementById("assessCard").style.display="none"; }
+
+  async function salvarAvaliacao(){
+    const msg = document.getElementById("assessMsg");
+    const btn = document.getElementById("assessSaveBtn");
+    const student_id = document.getElementById("assessStudentId").value;
+    const date = document.getElementById("a_date").value;
+    if(!student_id || !date){ msg.className="msg err"; msg.textContent="Escolha aluno e data."; return; }
+    const num = v => v==="" ? null : Number(v);
+    const row = {
+      student_id, date,
+      weight: num(document.getElementById("a_weight").value),
+      body_fat: num(document.getElementById("a_bf").value),
+      lean_mass: num(document.getElementById("a_lean").value),
+      fat_mass: num(document.getElementById("a_fat").value),
+      notes: document.getElementById("a_notes").value.trim() || null,
+      created_by: ME.id
+    };
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("assessments").insert(row);
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro ao salvar: "+error.message; return; }
+    msg.className="msg ok"; msg.textContent="Avaliação salva!";
+    await loadStudents();
+    setTimeout(fecharForm, 800);
   }
 
   init();
