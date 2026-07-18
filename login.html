@@ -24,7 +24,8 @@
   .btn{width:100%;border:none;border-radius:14px;padding:13px;font-weight:800;font-size:15px;color:#fff;cursor:pointer;
     background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 8px 20px rgba(236,72,153,.22);margin-top:6px}
   .btn:disabled{opacity:.6;cursor:default}
-  .msg{margin-top:14px;font-size:13px;text-align:center;padding:10px;border-radius:10px;display:none}
+  .forgot{display:block;text-align:center;margin-top:12px;font-size:13px;color:var(--pink-deep);font-weight:600;text-decoration:none;cursor:pointer}
+  .msg{margin-top:14px;font-size:13px;text-align:center;padding:10px;border-radius:10px;display:none;line-height:1.4}
   .msg.err{display:block;background:#fdecec;color:#c0392b}
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
   .back{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--muted);text-decoration:none}
@@ -53,7 +54,12 @@
     <label>Senha</label>
     <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
   </div>
+  <div class="field" id="password2Field" style="display:none">
+    <label>Confirmar senha</label>
+    <input id="password2" type="password" placeholder="••••••••">
+  </div>
   <button class="btn" id="submitBtn" onclick="submit()">Entrar</button>
+  <a class="forgot" id="forgotLink" onclick="forgot()">Esqueci minha senha</a>
   <div class="msg" id="msg"></div>
   <a class="back" href="index.html">← Voltar ao site</a>
 </div>
@@ -61,10 +67,10 @@
 <script>
   const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
+  const RESET_URL = "https://gaahh13-ai.github.io/pietra-rebello/reset.html";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   let mode = "login";
 
-  // já logado? vai direto pro app
   sb.auth.getSession().then(({data})=>{ if(data.session) location.href = "app.html"; });
 
   function setMode(m){
@@ -72,6 +78,8 @@
     document.getElementById("tabLogin").classList.toggle("active", m==="login");
     document.getElementById("tabSignup").classList.toggle("active", m==="signup");
     document.getElementById("nameField").style.display = m==="signup" ? "block" : "none";
+    document.getElementById("password2Field").style.display = m==="signup" ? "block" : "none";
+    document.getElementById("forgotLink").style.display = m==="login" ? "block" : "none";
     document.getElementById("submitBtn").textContent = m==="signup" ? "Criar conta" : "Entrar";
     showMsg("");
   }
@@ -86,6 +94,11 @@
     const name = document.getElementById("name").value.trim();
     const btn = document.getElementById("submitBtn");
     if(!email || !password){ showMsg("Preencha e-mail e senha."); return; }
+    if(mode === "signup"){
+      const p2 = document.getElementById("password2").value;
+      if(password.length < 6){ showMsg("A senha precisa ter ao menos 6 caracteres."); return; }
+      if(password !== p2){ showMsg("As senhas não coincidem — confira e tente de novo."); return; }
+    }
     btn.disabled = true; showMsg("");
     try{
       if(mode === "signup"){
@@ -98,15 +111,25 @@
         if(error) throw error;
         location.href = "app.html";
       }
-    } catch(e){
-      showMsg(traduz(e.message || "Erro ao entrar."));
-    } finally { btn.disabled = false; }
+    } catch(e){ showMsg(traduz(e.message || "Erro ao entrar.")); }
+    finally { btn.disabled = false; }
+  }
+  async function forgot(){
+    const email = document.getElementById("email").value.trim();
+    if(!email){ showMsg("Digite seu e-mail no campo acima e clique em \"Esqueci minha senha\"."); return; }
+    showMsg("Enviando…");
+    try{
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: RESET_URL });
+      if(error) throw error;
+      showMsg("Enviamos um link de redefinição para " + email + ". Confira sua caixa de entrada (e o spam) e crie uma senha nova.", true);
+    } catch(e){ showMsg(traduz(e.message)); }
   }
   function traduz(m){
     if(/Invalid login/i.test(m)) return "E-mail ou senha incorretos.";
     if(/Email not confirmed/i.test(m)) return "Confirme seu e-mail antes de entrar.";
-    if(/already registered/i.test(m)) return "Este e-mail já tem conta. Use 'Entrar'.";
+    if(/already registered/i.test(m)) return "Este e-mail já tem conta. Use 'Entrar' ou 'Esqueci minha senha'.";
     if(/at least 6/i.test(m)) return "A senha precisa ter ao menos 6 caracteres.";
+    if(/rate limit|too many/i.test(m)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
     return m;
   }
   document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") submit(); });
