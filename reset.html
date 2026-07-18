@@ -45,7 +45,9 @@
 <script>
   const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
+  });
   let ready = false;
 
   function showMsg(t, ok){ const el=document.getElementById("msg"); el.className="msg"+(t?(ok?" ok":" err"):""); el.textContent=t; }
