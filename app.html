@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minha área — Pietra Rebello</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{color-scheme:light;--txt:#4b3b58;--muted:#9a8aa6;--line:#f2e2ec;--pink:#ec4899;--pink-deep:#db2777;--blue-deep:#3b82f6;--accent2:#16a34a}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  body{min-height:100vh;background:linear-gradient(180deg,#fdf2f8,#f6f1fe 45%,#eef5ff);color:var(--txt)}
+  nav{background:rgba(253,244,248,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  nav .in{max-width:960px;margin:0 auto;padding:0 20px;height:66px;display:flex;align-items:center;justify-content:space-between}
+  .logo{height:32px}
+  .logout{border:1.5px solid var(--pink);color:var(--pink-deep);background:#fff;border-radius:12px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px}
+  .hello{font-size:22px;font-weight:800;margin-bottom:4px}
+  .role-chip{display:inline-block;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;margin-bottom:20px}
+  .chip-creator{background:#ede9fe;color:#6d28d9}
+  .chip-professional{background:#dbeafe;color:#1d4ed8}
+  .chip-student{background:#fce7f3;color:#be185d}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 8px 22px rgba(180,90,140,.06);margin-bottom:16px}
+  .card h3{font-size:15px;font-weight:800;color:var(--pink-deep);margin-bottom:8px}
+  .card p{font-size:14px;color:var(--muted);line-height:1.55}
+  .btn{display:inline-block;border:none;border-radius:12px;padding:11px 20px;font-weight:700;font-size:14px;color:#fff;cursor:pointer;text-decoration:none;
+    background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 6px 16px rgba(236,72,153,.2);margin-top:8px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .tag{display:inline-block;background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid #fed7aa}
+  #loading{text-align:center;padding:80px 20px;color:var(--muted)}
+</style>
+</head>
+<body>
+<nav><div class="in"><img class="logo" src="logo.png" alt="Pietra Rebello"><button class="logout" onclick="sair()">Sair</button></div></nav>
+<div class="wrap">
+  <div id="loading">Carregando…</div>
+  <div id="content" style="display:none"></div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
+  function esc(s){return String(s||"").replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
+
+  async function init(){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session){ location.href = "login.html"; return; }
+    const user = session.user;
+    let { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
+    if(!profile){ profile = { role:"student", full_name:null }; }
+    render(user, profile);
+  }
+
+  function render(user, p){
+    const nome = p.full_name || user.email;
+    const role = p.role || "student";
+    const rotulo = {creator:"Criador", professional:"Profissional", student:"Aluno"}[role] || role;
+    let html = `<div class="hello">Olá, ${esc(nome)} 👋</div>
+      <div class="role-chip chip-${role}">${rotulo}</div>`;
+
+    if(role === "student"){
+      html += `
+      <div class="card">
+        <h3>📊 Seu dashboard</h3>
+        <p>Acompanhe sua evolução — peso, composição, sono, adesão — e envie seus reports pelo Telegram.</p>
+        <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
+        <p style="margin-top:10px"><span class="tag">em breve: seu dashboard individual, com seus próprios dados</span></p>
+      </div>`;
+    }
+    else if(role === "professional"){
+      html += `
+      <div class="grid">
+        <div class="card"><h3>👥 Meus alunos</h3><p>Gerencie seus alunos: adicionar, remover e acompanhar cada um.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+        <div class="card"><h3>➕ Nova avaliação</h3><p>Lance avaliações (peso, composição, dobras, perímetros) para alimentar os gráficos do aluno.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+        <div class="card"><h3>🎯 Metas</h3><p>Defina peso ideal, % de gordura, data alvo e próxima consulta de cada aluno.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+        <div class="card"><h3>📝 Minha página</h3><p>Edite os textos da sua página pública (sobre, serviços, planos).</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+      </div>`;
+    }
+    else if(role === "creator"){
+      html += `
+      <div class="card"><h3>🛠️ Painel do criador</h3><p>Você tem acesso total à estrutura: profissionais, alunos, dados e configurações.</p></div>
+      <div class="grid">
+        <div class="card"><h3>👩‍⚕️ Profissionais</h3><p>Gerenciar nutricionistas/personais cadastrados.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+        <div class="card"><h3>👥 Todos os alunos</h3><p>Visão de todos os pacientes da plataforma.</p><p style="margin-top:8px"><span class="tag">em construção</span></p></div>
+      </div>`;
+    }
+
+    document.getElementById("content").innerHTML = html;
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+  }
+
+  init();
+</script>
+</body>
+</html>
