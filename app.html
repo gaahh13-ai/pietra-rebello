@@ -149,6 +149,13 @@
 
   /* ---------------- ALUNO ---------------- */
   function studentHTML(){
+    if(ME.status === "archived"){
+      return `<div class="card">
+        <h3>⏸️ Acompanhamento inativo</h3>
+        <p>Seu acompanhamento está pausado no momento, então o painel fica indisponível.
+           Seu histórico continua guardado. Fale com sua nutricionista para reativar.</p>
+      </div>`;
+    }
     const linked = !!ME.professional_id;
     let h = `
       <div class="card">
@@ -190,9 +197,12 @@
     return `
       <div class="card">
         <h3>➕ Cadastrar aluno</h3>
-        <p>Cadastre o e-mail do aluno. Só depois disso ele consegue fazer o "primeiro acesso" na página de login e receber o link de acesso.</p>
-        <div class="field" style="margin-top:12px"><input id="inviteEmail" type="email" placeholder="email-do-aluno@exemplo.com"></div>
-        <button class="btn small" id="inviteBtn" onclick="cadastrarAluno()">Cadastrar e-mail</button>
+        <p>Informe nome e e-mail. Só depois disso o aluno consegue fazer o "primeiro acesso" na página de login — e ele já entra com o nome preenchido.</p>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Nome e sobrenome</label><input id="inviteName" type="text" placeholder="ex: Maria Silva"></div>
+          <div class="field"><label>E-mail</label><input id="inviteEmail" type="email" placeholder="email-do-aluno@exemplo.com"></div>
+        </div>
+        <button class="btn small" id="inviteBtn" onclick="cadastrarAluno()">Cadastrar aluno</button>
         <div class="msg" id="inviteMsg"></div>
         <div id="invitesBox" style="margin-top:14px"></div>
       </div>
@@ -200,6 +210,12 @@
       <div class="card">
         <h3>👥 Meus alunos</h3>
         <div id="studentsBox"><div class="empty">Carregando alunos…</div></div>
+      </div>
+
+      <div class="card">
+        <h3>📁 Alunos anteriores</h3>
+        <p>Alunos arquivados. O histórico fica guardado e você pode reativar quando voltarem.</p>
+        <div id="archivedBox" style="margin-top:8px"></div>
       </div>
 
       <div class="card" id="assessCard" style="display:none">
@@ -225,19 +241,21 @@
   }
 
   async function cadastrarAluno(){
-    const emailRaw = document.getElementById("inviteEmail").value.trim();
-    const email = emailRaw.toLowerCase();
+    const nome  = document.getElementById("inviteName").value.trim();
+    const email = document.getElementById("inviteEmail").value.trim().toLowerCase();
     const msg = document.getElementById("inviteMsg"), btn = document.getElementById("inviteBtn");
+    if(!nome){ msg.className="msg err"; msg.textContent="Digite o nome do aluno."; return; }
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className="msg err"; msg.textContent="Digite um e-mail válido."; return; }
     btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("invites").insert({ email, professional_id: ME.id });
+    const { error } = await sb.from("invites").insert({ email, full_name: nome, professional_id: ME.id });
     btn.disabled=false;
     if(error){
       if(/duplicate|unique/i.test(error.message)){ msg.className="msg err"; msg.textContent="Esse e-mail já está cadastrado."; }
       else { msg.className="msg err"; msg.textContent="Erro: "+error.message; }
       return;
     }
-    msg.className="msg ok"; msg.textContent="E-mail cadastrado! Agora o aluno pode fazer o primeiro acesso.";
+    msg.className="msg ok"; msg.textContent=nome+" cadastrado! Agora ele pode fazer o primeiro acesso.";
+    document.getElementById("inviteName").value="";
     document.getElementById("inviteEmail").value="";
     loadInvites();
   }
@@ -259,7 +277,8 @@
         ? `<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">ativo</span>`
         : `<span class="tag">aguardando 1º acesso</span>`;
       return `<div class="student-row">
-        <div><div class="name">${esc(iv.email)}</div><div class="meta">${status}</div></div>
+        <div><div class="name">${esc(iv.full_name || iv.email)}</div>
+             <div class="meta">${iv.full_name ? esc(iv.email)+" · " : ""}${status}</div></div>
         <div class="row-actions"><button class="btn small ghost" onclick="removerConvite('${esc(iv.email)}')">Remover</button></div>
       </div>`;
     }).join("");
@@ -283,28 +302,56 @@
     loadInvites();
   }
 
+  function linhaAluno(s, arquivado){
+    const nome = nomeAluno(s);
+    const n = ASSESS.filter(a=>a.student_id===s.id).length;
+    const sub = (s.email && s.email !== nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
+    const acoes = arquivado
+      ? `<button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver histórico</button>
+         <button class="btn small" onclick="reativarAluno('${s.id}')">Reativar</button>`
+      : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
+         <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
+         <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
+         <button class="btn small ghost" title="Arquivar aluno" onclick="arquivarAluno('${s.id}')">📁</button>`;
+    return `<div class="student-row">
+      <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
+      <div class="row-actions">${acoes}</div>
+      <div id="assessList_${s.id}" style="width:100%"></div>
+    </div>`;
+  }
+
   function renderStudents(){
+    const ativos    = STUDENTS.filter(s => (s.status || "active") === "active");
+    const arquivados= STUDENTS.filter(s => s.status === "archived");
+
     const box = document.getElementById("studentsBox");
-    if(!box) return;
-    if(STUDENTS.length === 0){
-      box.innerHTML = `<div class="empty">Nenhum aluno conectado ainda. Compartilhe seu código de convite acima.</div>`;
-      return;
+    if(box){
+      box.innerHTML = ativos.length
+        ? ativos.map(s=>linhaAluno(s,false)).join("")
+        : `<div class="empty">Nenhum aluno ativo ainda. Cadastre o nome e o e-mail acima.</div>`;
     }
-    box.innerHTML = STUDENTS.map(s=>{
-      const nome = nomeAluno(s);
-      const n = ASSESS.filter(a=>a.student_id===s.id).length;
-      const sub = (s.email && s.email !== nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
-      return `<div class="student-row">
-        <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
-        <div class="row-actions">
-          <button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
-          <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
-          <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
-          <button class="btn small ghost" title="Excluir aluno" style="color:#c0392b;border-color:#f3c9c9" onclick="excluirAluno('${s.id}')">🗑</button>
-        </div>
-        <div id="assessList_${s.id}" style="width:100%"></div>
-      </div>`;
-    }).join("");
+    const arq = document.getElementById("archivedBox");
+    if(arq){
+      arq.innerHTML = arquivados.length
+        ? arquivados.map(s=>linhaAluno(s,true)).join("")
+        : `<div class="empty">Nenhum aluno arquivado.</div>`;
+    }
+  }
+
+  async function arquivarAluno(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    if(!confirm(`Arquivar ${nomeAluno(s)}?\n\nEle perde o acesso ao painel, mas todo o histórico fica guardado e você pode reativar depois.`)) return;
+    const { error } = await sb.from("profiles")
+      .update({ status:"archived", archived_at:new Date().toISOString() }).eq("id", id);
+    if(error){ alert("Erro ao arquivar: "+error.message); return; }
+    loadStudents();
+  }
+
+  async function reativarAluno(id){
+    const { error } = await sb.from("profiles")
+      .update({ status:"active", archived_at:null }).eq("id", id);
+    if(error){ alert("Erro ao reativar: "+error.message); return; }
+    loadStudents();
   }
 
   function nomeAluno(s){
@@ -318,18 +365,6 @@
     if(novo === null) return;
     const { error } = await sb.from("profiles").update({ full_name: novo.trim() || null }).eq("id", id);
     if(error){ alert("Erro ao salvar o nome: "+error.message); return; }
-    loadStudents();
-  }
-
-  async function excluirAluno(id){
-    const s = STUDENTS.find(x=>x.id===id);
-    const nome = nomeAluno(s);
-    if(!confirm(`Excluir ${nome}?\n\nIsso apaga TODAS as avaliações e o vínculo com você, e remove o e-mail da lista de cadastrados. Não dá para desfazer.`)) return;
-    if(s?.email){
-      await sb.from("invites").delete().eq("email", s.email.toLowerCase()).eq("professional_id", ME.id);
-    }
-    const { error } = await sb.from("profiles").delete().eq("id", id);
-    if(error){ alert("Erro ao excluir: "+error.message); return; }
     loadStudents();
   }
 
