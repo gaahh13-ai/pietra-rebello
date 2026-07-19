@@ -59,6 +59,21 @@
   .assess-item b{color:var(--pink-deep)}
   .close-x{float:right;cursor:pointer;color:var(--muted);font-weight:800;font-size:18px;line-height:1}
 
+  /* avaliações e consultas do aluno */
+  .aval{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#fffdfe}
+  .aval-head{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px}
+  .meds{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+  .med{background:#faf3f8;border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12.5px;display:flex;gap:7px;align-items:center}
+  .med span{color:var(--muted);font-weight:600}
+  .med b{color:var(--pink-deep);font-weight:800}
+  .dif{font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;margin-left:-4px}
+  .dif.up{background:#fff1f2;color:#be123c}
+  .dif.down{background:#eafaf0;color:#1a8a4a}
+  .obs{margin-top:11px;font-size:13px;line-height:1.55;color:var(--txt);background:#f8f6ff;border-left:3px solid var(--pink);border-radius:0 10px 10px 0;padding:10px 12px}
+  .meta-sm{font-size:12px;color:var(--muted);margin-top:8px}
+  .proxima{background:linear-gradient(120deg,#fce7f3,#e0e7ff);border-radius:14px;padding:18px}
+  .proxima .quando{font-size:19px;font-weight:800;color:var(--pink-deep)}
+
   @media(max-width:760px){
     .shell{grid-template-columns:1fr}
     .sidebar{position:static;display:flex;gap:6px;overflow-x:auto;padding:8px;-webkit-overflow-scrolling:touch}
@@ -114,8 +129,10 @@
   /* ================= MENU / LAYOUT ================= */
   function menuFor(role){
     if(role === "student") return [
-      {id:"dash",   ico:"📊", label:"Meu dashboard"},
-      {id:"perfil", ico:"👤", label:"Meu perfil"}
+      {id:"dash",       ico:"📊", label:"Meu dashboard"},
+      {id:"avaliacoes", ico:"📋", label:"Avaliações Físicas"},
+      {id:"consultas",  ico:"📅", label:"Consultas Nutri"},
+      {id:"perfil",     ico:"👤", label:"Perfil"}
     ];
     const m = [
       {id:"alunos",    ico:"👥", label:"Meus alunos"},
@@ -172,6 +189,8 @@
     const p = document.getElementById("panel"); if(!p) return;
 
     if(id === "dash")      p.innerHTML = viewDash();
+    else if(id === "avaliacoes"){ p.innerHTML = viewAvaliacoes(); carregarMinhasAvaliacoes(); }
+    else if(id === "consultas"){  p.innerHTML = viewConsultas();  carregarMinhasConsultas(); }
     else if(id === "perfil")p.innerHTML = viewPerfil();
     else if(id === "admin")p.innerHTML = viewAdmin();
     else if(id === "alunos"){    p.innerHTML = viewAlunos();    loadStudents(); }
@@ -201,6 +220,104 @@
     if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
     msg.className="msg ok"; msg.textContent="Senha salva! Já pode entrar com e-mail e senha.";
     document.getElementById("np1").value=""; document.getElementById("np2").value="";
+  }
+
+  /* ---------- ALUNO: AVALIAÇÕES FÍSICAS ---------- */
+  function viewAvaliacoes(){
+    return `<h2>Avaliações Físicas</h2>
+      <div class="card">
+        <h3>📋 Minhas avaliações</h3>
+        <p>Todos os dados levantados pela sua nutricionista, da mais recente para a mais antiga.</p>
+        <div id="avalBox" style="margin-top:12px"><div class="empty">Carregando…</div></div>
+      </div>`;
+  }
+
+  function fmtDataHora(v){
+    if(!v) return "—";
+    const d = new Date(v);
+    if(isNaN(d)) return fmtDate(v);
+    return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  }
+  function med(rot, val, un){
+    if(val==null || val==="") return "";
+    return `<div class="med"><span>${rot}</span><b>${Number(val).toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</b></div>`;
+  }
+
+  async function carregarMinhasAvaliacoes(){
+    const box = document.getElementById("avalBox");
+    const { data, error } = await sb.from("assessments").select("*")
+      .eq("student_id", ME.id).order("date",{ascending:false});
+    if(!box) return;
+    if(error){ box.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`; return; }
+    if(!data || !data.length){
+      box.innerHTML = `<div class="empty">Você ainda não tem avaliações registradas.<br>Elas aparecerão aqui assim que sua nutricionista lançar a primeira.</div>`;
+      return;
+    }
+    box.innerHTML = data.map((a,idx)=>{
+      const ant = data[idx+1];
+      const dif = (atual, anterior, un) => {
+        if(atual==null || !ant || anterior==null) return "";
+        const d = Number(atual)-Number(anterior);
+        if(!d) return "";
+        const cls = d>0 ? "up" : "down";
+        return `<span class="dif ${cls}">${d>0?"+":""}${d.toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</span>`;
+      };
+      return `<div class="aval">
+        <div class="aval-head">
+          <b>${fmtDate(a.date)}</b>
+          ${idx===0?'<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">mais recente</span>':''}
+        </div>
+        <div class="meds">
+          ${med("Peso", a.weight, " kg")}${dif(a.weight, ant&&ant.weight," kg")}
+          ${med("% Gordura", a.body_fat, "%")}${dif(a.body_fat, ant&&ant.body_fat," pp")}
+          ${med("Massa magra", a.lean_mass, " kg")}${dif(a.lean_mass, ant&&ant.lean_mass," kg")}
+          ${med("Massa gorda", a.fat_mass, " kg")}${dif(a.fat_mass, ant&&ant.fat_mass," kg")}
+        </div>
+        ${a.notes ? `<div class="obs"><b>Observações:</b> ${esc(a.notes)}</div>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  /* ---------- ALUNO: CONSULTAS NUTRI ---------- */
+  function viewConsultas(){
+    return `<h2>Consultas Nutri</h2>
+      <div class="card">
+        <h3>📅 Próxima consulta</h3>
+        <div id="proximaBox"><div class="empty">Carregando…</div></div>
+      </div>
+      <div class="card">
+        <h3>🕐 Histórico</h3>
+        <div id="histBox"><div class="empty">Carregando…</div></div>
+      </div>`;
+  }
+
+  async function carregarMinhasConsultas(){
+    const prox = document.getElementById("proximaBox"), hist = document.getElementById("histBox");
+    const { data, error } = await sb.from("consultations").select("*")
+      .eq("student_id", ME.id).order("scheduled_at",{ascending:false});
+    if(error){
+      if(prox) prox.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`;
+      if(hist) hist.innerHTML = "";
+      return;
+    }
+    const agora = new Date();
+    const futuras = (data||[]).filter(c=>new Date(c.scheduled_at) >= agora).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
+    const passadas= (data||[]).filter(c=>new Date(c.scheduled_at) <  agora);
+
+    if(prox) prox.innerHTML = futuras.length
+      ? `<div class="proxima">
+           <div class="quando">${fmtDataHora(futuras[0].scheduled_at)}</div>
+           ${futuras[0].notes ? `<div class="obs">${esc(futuras[0].notes)}</div>` : ""}
+         </div>
+         ${futuras.length>1 ? `<div class="meta-sm">+ ${futuras.length-1} outra(s) agendada(s)</div>` : ""}`
+      : `<div class="empty">Nenhuma consulta agendada no momento.<br>Sua nutricionista agendará por aqui.</div>`;
+
+    if(hist) hist.innerHTML = passadas.length
+      ? passadas.map(c=>`<div class="aval">
+          <div class="aval-head"><b>${fmtDataHora(c.scheduled_at)}</b></div>
+          ${c.notes ? `<div class="obs">${esc(c.notes)}</div>` : `<div class="meta-sm">sem observações</div>`}
+        </div>`).join("")
+      : `<div class="empty">Nenhuma consulta realizada ainda.</div>`;
   }
 
   /* ================= TELA: PERFIL ================= */
@@ -271,6 +388,20 @@
         <div class="field"><label>Observações</label><textarea id="a_notes" rows="2" placeholder="opcional"></textarea></div>
         <button class="btn small" id="assessSaveBtn" onclick="salvarAvaliacao()">Salvar avaliação</button>
         <div class="msg" id="assessMsg"></div>
+      </div>
+
+      <div class="card" id="consultCard" style="display:none">
+        <span class="close-x" onclick="fecharConsulta()">✕</span>
+        <h3>📅 Consultas — <span id="consultStudentName"></span></h3>
+        <input type="hidden" id="consultStudentId">
+        <div class="form-grid">
+          <div class="field"><label>Data</label><input id="c_date" type="date"></div>
+          <div class="field"><label>Horário</label><input id="c_time" type="time" value="09:00"></div>
+        </div>
+        <div class="field"><label>Observações (opcional)</label><textarea id="c_notes" rows="2" placeholder="ex: retorno para ajuste do plano"></textarea></div>
+        <button class="btn small" id="consultSaveBtn" onclick="salvarConsulta()">Agendar consulta</button>
+        <div class="msg" id="consultMsg"></div>
+        <div id="consultList" style="margin-top:14px"></div>
       </div>`;
   }
 
@@ -327,6 +458,7 @@
       : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
          <a class="btn small ghost" title="Ver dashboard" href="dashboard.html?aluno=${s.id}">📊</a>
          <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
+         <button class="btn small ghost" title="Agendar consulta" onclick="novaConsulta('${s.id}')">📅</button>
          <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
          <button class="btn small ghost" title="Arquivar" onclick="arquivarAluno('${s.id}')">📁</button>`;
     return `<div class="student-row">
@@ -446,6 +578,68 @@
     card.scrollIntoView({behavior:"smooth",block:"center"});
   }
   function fecharForm(){ const c=document.getElementById("assessCard"); if(c) c.style.display="none"; }
+
+  /* ---------- PROFISSIONAL: CONSULTAS ---------- */
+  function novaConsulta(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    document.getElementById("consultStudentId").value = id;
+    document.getElementById("consultStudentName").textContent = nomeAluno(s);
+    document.getElementById("c_date").value = "";
+    document.getElementById("c_time").value = "09:00";
+    document.getElementById("c_notes").value = "";
+    const card = document.getElementById("consultCard");
+    card.style.display = "block";
+    const m = document.getElementById("consultMsg"); m.className="msg"; m.textContent="";
+    listarConsultas(id);
+    card.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function fecharConsulta(){ const c=document.getElementById("consultCard"); if(c) c.style.display="none"; }
+
+  async function listarConsultas(id){
+    const box = document.getElementById("consultList");
+    const { data, error } = await sb.from("consultations").select("*")
+      .eq("student_id", id).order("scheduled_at",{ascending:false});
+    if(!box) return;
+    if(error){ box.innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`; return; }
+    if(!data || !data.length){ box.innerHTML = `<div class="empty">Nenhuma consulta agendada para este aluno.</div>`; return; }
+    const agora = new Date();
+    box.innerHTML = data.map(c=>{
+      const futura = new Date(c.scheduled_at) >= agora;
+      const et = futura
+        ? `<span class="tag" style="background:#eef4ff;color:#1d4ed8;border-color:#c7dbff">agendada</span>`
+        : `<span class="tag">realizada</span>`;
+      return `<div class="student-row">
+        <div><div class="name">${fmtDataHora(c.scheduled_at)} ${et}</div>
+             ${c.notes?`<div class="meta">${esc(c.notes)}</div>`:""}</div>
+        <div class="row-actions"><button class="btn small ghost" onclick="excluirConsulta('${c.id}','${id}')">Remover</button></div>
+      </div>`;
+    }).join("");
+  }
+
+  async function salvarConsulta(){
+    const msg=document.getElementById("consultMsg"), btn=document.getElementById("consultSaveBtn");
+    const student_id=document.getElementById("consultStudentId").value;
+    const d=document.getElementById("c_date").value, h=document.getElementById("c_time").value || "09:00";
+    if(!student_id || !d){ msg.className="msg err"; msg.textContent="Escolha a data da consulta."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("consultations").insert({
+      student_id, scheduled_at: new Date(`${d}T${h}`).toISOString(),
+      notes: document.getElementById("c_notes").value.trim() || null,
+      created_by: ME.id
+    });
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro ao agendar: "+error.message; return; }
+    msg.className="msg ok"; msg.textContent="Consulta agendada!";
+    document.getElementById("c_notes").value="";
+    listarConsultas(student_id);
+  }
+
+  async function excluirConsulta(id, studentId){
+    if(!confirm("Remover esta consulta?")) return;
+    const { error } = await sb.from("consultations").delete().eq("id", id);
+    if(error){ alert("Erro ao remover: "+error.message); return; }
+    listarConsultas(studentId);
+  }
 
   async function salvarAvaliacao(){
     const msg=document.getElementById("assessMsg"), btn=document.getElementById("assessSaveBtn");
