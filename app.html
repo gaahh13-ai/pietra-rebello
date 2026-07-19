@@ -6,55 +6,73 @@
 <title>Minha área — Pietra Rebello</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{color-scheme:light;--txt:#4b3b58;--muted:#9a8aa6;--line:#f2e2ec;--pink:#ec4899;--pink-deep:#db2777;--blue-deep:#3b82f6;--accent2:#16a34a}
+  :root{color-scheme:light;--txt:#4b3b58;--muted:#9a8aa6;--line:#f2e2ec;--pink:#ec4899;--pink-deep:#db2777}
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
   body{min-height:100vh;background:linear-gradient(180deg,#fdf2f8,#f6f1fe 45%,#eef5ff);color:var(--txt)}
-  nav{background:rgba(253,244,248,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
-  nav .in{max-width:960px;margin:0 auto;padding:0 20px;height:66px;display:flex;align-items:center;justify-content:space-between}
+  nav.top{background:rgba(253,244,248,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  nav.top .in{max-width:1040px;margin:0 auto;padding:0 20px;height:66px;display:flex;align-items:center;justify-content:space-between}
   .logo{height:32px}
   .logout{border:1.5px solid var(--pink);color:var(--pink-deep);background:#fff;border-radius:12px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer}
-  .wrap{max-width:960px;margin:0 auto;padding:32px 20px}
-  .hello{font-size:22px;font-weight:800;margin-bottom:4px}
-  .role-chip{display:inline-block;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;margin-bottom:20px}
+  .wrap{max-width:1040px;margin:0 auto;padding:26px 20px 60px}
+  .hello{font-size:21px;font-weight:800;margin-bottom:4px}
+  .role-chip{display:inline-block;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;margin-bottom:18px}
   .chip-creator{background:#ede9fe;color:#6d28d9}
   .chip-professional{background:#dbeafe;color:#1d4ed8}
   .chip-student{background:#fce7f3;color:#be185d}
-  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 8px 22px rgba(180,90,140,.06);margin-bottom:16px}
+
+  .shell{display:grid;grid-template-columns:212px 1fr;gap:20px;align-items:start}
+  .sidebar{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;
+           box-shadow:0 8px 22px rgba(180,90,140,.06);position:sticky;top:86px}
+  .navitem{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;
+           padding:11px 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--txt);cursor:pointer;text-align:left}
+  .navitem:hover{background:#faf3f8}
+  .navitem.active{background:linear-gradient(120deg,#fce7f3,#e0e7ff);color:var(--pink-deep);font-weight:800}
+  .navitem .ico{font-size:15px;line-height:1}
+
+  .panel h2{font-size:18px;font-weight:800;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;
+        box-shadow:0 8px 22px rgba(180,90,140,.06);margin-bottom:16px}
   .card h3{font-size:15px;font-weight:800;color:var(--pink-deep);margin-bottom:8px}
   .card p{font-size:14px;color:var(--muted);line-height:1.55}
   .btn{display:inline-block;border:none;border-radius:12px;padding:11px 20px;font-weight:700;font-size:14px;color:#fff;cursor:pointer;text-decoration:none;
-    background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 6px 16px rgba(236,72,153,.2);margin-top:8px}
+       background:linear-gradient(120deg,#f472b6,#818cf8);box-shadow:0 6px 16px rgba(236,72,153,.2);margin-top:8px}
   .btn.small{padding:8px 14px;font-size:13px;box-shadow:none}
   .btn.ghost{background:#fff;color:var(--pink-deep);border:1.5px solid var(--line)}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:640px){.grid{grid-template-columns:1fr}}
   .tag{display:inline-block;background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid #fed7aa}
   #loading{text-align:center;padding:80px 20px;color:var(--muted)}
-  .code-box{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-  .code-box code{background:#faf3f8;border:1px dashed var(--pink);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--pink-deep);word-break:break-all;flex:1;min-width:200px}
   .student-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .student-row:last-child{border-bottom:none}
   .student-row .name{font-weight:700;font-size:14px}
   .student-row .meta{font-size:12px;color:var(--muted)}
-  .row-actions{display:flex;gap:8px}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
-  .field input,.field select,.field textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit}
-  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid #f9a8d4;border-color:#f9a8d4}
+  .field input,.field textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit}
+  .field input:focus,.field textarea:focus{outline:2px solid #f9a8d4;border-color:#f9a8d4}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:520px){.form-grid{grid-template-columns:1fr}}
-  .msg{margin-top:10px;font-size:13px;padding:9px 11px;border-radius:9px;display:none;line-height:1.4}
+  .msg{margin-top:10px;font-size:13px;padding:9px 11px;border-radius:9px;display:none;line-height:1.45}
   .msg.err{display:block;background:#fdecec;color:#c0392b}
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
   .empty{font-size:13px;color:var(--muted);padding:8px 0}
-  .assess-item{font-size:13px;color:var(--txt);padding:8px 0;border-bottom:1px dashed var(--line)}
+  .assess-item{font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
   .assess-item:last-child{border-bottom:none}
   .assess-item b{color:var(--pink-deep)}
   .close-x{float:right;cursor:pointer;color:var(--muted);font-weight:800;font-size:18px;line-height:1}
+
+  @media(max-width:760px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{position:static;display:flex;gap:6px;overflow-x:auto;padding:8px;-webkit-overflow-scrolling:touch}
+    .navitem{white-space:nowrap;padding:9px 12px;font-size:13px;width:auto}
+    .form-grid{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
-<nav><div class="in"><a href="index.html"><img class="logo" src="logo.png" alt="Pietra Rebello"></a><button class="logout" onclick="sair()">Sair</button></div></nav>
+<nav class="top"><div class="in">
+  <a href="index.html"><img class="logo" src="logo.png" alt="Pietra Rebello"></a>
+  <button class="logout" onclick="sair()">Sair</button>
+</div></nav>
+
 <div class="wrap">
   <div id="loading">Carregando…</div>
   <div id="content" style="display:none"></div>
@@ -66,106 +84,120 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
   });
-  let ME = null;            // meu profile
-  let STUDENTS = [];        // alunos do profissional (já entraram)
-  let INVITES = [];         // e-mails cadastrados (convites)
-  let ASSESS = [];          // avaliações dos meus alunos
+
+  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null;
 
   async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
   function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
   function fmtDate(d){ if(!d) return "—"; const p=String(d).slice(0,10).split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
   function shortId(id){ return String(id||"").slice(0,8); }
+  function primeiroNome(){ const n=(ME.full_name||"").trim(); return n?n.split(/\s+/)[0]:""; }
+  function nomeAluno(s){ return s ? (s.full_name || s.email || ("Aluno "+shortId(s.id))) : "Aluno"; }
 
+  /* ================= INÍCIO ================= */
   async function init(){
     let { data:{ session } } = await sb.auth.getSession();
     if(!session){
-      // o link do e-mail pode ainda estar sendo processado; espera um evento de login
       session = await new Promise(res=>{
-        const t = setTimeout(()=>res(null), 2500);
-        sb.auth.onAuthStateChange((_e, s)=>{ if(s){ clearTimeout(t); res(s); } });
+        const t=setTimeout(()=>res(null), 2500);
+        sb.auth.onAuthStateChange((_e,s)=>{ if(s){ clearTimeout(t); res(s); } });
       });
     }
     if(!session){ location.href = "login.html"; return; }
     const user = session.user;
     let { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
-    if(!profile){ profile = { id:user.id, role:"student", full_name:null, professional_id:null }; }
-    ME = { ...profile, email:user.email };
-    render();
+    if(!profile) profile = { id:user.id, role:"student", full_name:null, professional_id:null, status:"active" };
+    ME = { ...profile, email: user.email };
+    montar();
   }
 
-  function primeiroNome(){
-    const n = (ME.full_name || "").trim();
-    return n ? n.split(/\s+/)[0] : "";
+  /* ================= MENU / LAYOUT ================= */
+  function menuFor(role){
+    if(role === "student") return [
+      {id:"dash",   ico:"📊", label:"Meu dashboard"},
+      {id:"senha",  ico:"🔐", label:"Minha senha"},
+      {id:"perfil", ico:"👤", label:"Meu perfil"}
+    ];
+    const m = [
+      {id:"alunos",    ico:"👥", label:"Meus alunos"},
+      {id:"cadastrar", ico:"➕", label:"Cadastrar aluno"},
+      {id:"inativos",  ico:"📁", label:"Alunos inativos"},
+      {id:"perfil",    ico:"👤", label:"Meu perfil"}
+    ];
+    if(role === "creator") m.push({id:"admin", ico:"🛠️", label:"Painel do criador"});
+    return m;
   }
 
-  function perfilHTML(){
-    const falta = !primeiroNome();
-    return `
-      <div class="card">
-        <h3>👤 Meu perfil</h3>
-        <p>${falta ? "Informe seu nome para personalizar a saudação." : "Altere seu nome se precisar."}</p>
-        <div class="field" style="margin-top:12px">
-          <label>Nome completo</label>
-          <input id="myName" type="text" value="${esc(ME.full_name || "")}" placeholder="ex: Pietra Rebello">
-        </div>
-        <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar nome</button>
-        <div class="msg" id="nameMsg"></div>
-      </div>`;
-  }
-
-  async function salvarNome(){
-    const v = document.getElementById("myName").value.trim();
-    const msg = document.getElementById("nameMsg"), btn = document.getElementById("nameBtn");
-    if(!v){ msg.className="msg err"; msg.textContent="Digite seu nome."; return; }
-    btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("profiles").update({ full_name: v }).eq("id", ME.id);
-    btn.disabled=false;
-    if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
-    ME.full_name = v;
-    render();
-  }
-
-  function render(){
+  function montar(){
     const role = ME.role || "student";
     const rotulo = {creator:"Criador", professional:"Profissional", student:"Aluno"}[role] || role;
     const first = primeiroNome();
-    let html = `<div class="hello">${first ? "Olá, "+esc(first)+" 👋" : "Olá! 👋"}</div>
-                <div class="role-chip chip-${role}">${rotulo}</div>`;
 
-    if(!first) html += perfilHTML();   // sem nome: pede logo no topo
+    // aluno arquivado: sem menu, só o aviso
+    if(role === "student" && ME.status === "archived"){
+      document.getElementById("content").innerHTML = `
+        <div class="hello">${first ? "Olá, "+esc(first) : "Olá!"}</div>
+        <div class="card"><h3>⏸️ Acompanhamento inativo</h3>
+        <p>Seu acompanhamento está pausado no momento, então o painel fica indisponível.
+           Seu histórico continua guardado. Fale com sua nutricionista para reativar.</p></div>`;
+      mostrar();
+      return;
+    }
 
-    if(role === "student")            html += studentHTML();
-    else if(role === "professional")  html += professionalHTML();
-    else if(role === "creator")       html += creatorHTML();
+    const itens = menuFor(role).map(i=>
+      `<button class="navitem" id="nav_${i.id}" onclick="go('${i.id}')">
+         <span class="ico">${i.ico}</span><span class="lbl">${i.label}</span></button>`).join("");
 
-    if(first) html += perfilHTML();    // já tem nome: fica no fim
+    document.getElementById("content").innerHTML = `
+      <div class="hello">${first ? "Olá, "+esc(first)+" 👋" : "Olá! 👋"}</div>
+      <div class="role-chip chip-${role}">${rotulo}</div>
+      <div class="shell">
+        <aside class="sidebar">${itens}</aside>
+        <section class="panel" id="panel"></section>
+      </div>`;
+    mostrar();
 
-    document.getElementById("content").innerHTML = html;
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("content").style.display = "block";
-
-    if(role === "professional" || role === "creator") loadStudents();
+    const inicial = !first ? "perfil" : (role === "student" ? "dash" : "alunos");
+    go(inicial);
   }
 
-  /* ---------------- ALUNO ---------------- */
-  function studentHTML(){
-    if(ME.status === "archived"){
-      return `<div class="card">
-        <h3>⏸️ Acompanhamento inativo</h3>
-        <p>Seu acompanhamento está pausado no momento, então o painel fica indisponível.
-           Seu histórico continua guardado. Fale com sua nutricionista para reativar.</p>
-      </div>`;
-    }
-    const linked = !!ME.professional_id;
-    let h = `
+  function mostrar(){
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+  }
+
+  function go(id){
+    VIEW = id;
+    document.querySelectorAll(".navitem").forEach(b=>b.classList.remove("active"));
+    const nav = document.getElementById("nav_"+id); if(nav) nav.classList.add("active");
+    const p = document.getElementById("panel"); if(!p) return;
+
+    if(id === "dash")      p.innerHTML = viewDash();
+    else if(id === "senha")p.innerHTML = viewSenha();
+    else if(id === "perfil")p.innerHTML = viewPerfil();
+    else if(id === "admin")p.innerHTML = viewAdmin();
+    else if(id === "alunos"){    p.innerHTML = viewAlunos();    loadStudents(); }
+    else if(id === "cadastrar"){ p.innerHTML = viewCadastrar(); loadStudents(); }
+    else if(id === "inativos"){  p.innerHTML = viewInativos();  loadStudents(); }
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  /* ================= TELAS: ALUNO ================= */
+  function viewDash(){
+    return `<h2>Meu dashboard</h2>
       <div class="card">
-        <h3>📊 Seu dashboard</h3>
-        <p>Acompanhe sua evolução — peso, composição, sono, adesão — e envie seus reports pelo Telegram.</p>
+        <h3>📊 Sua evolução</h3>
+        <p>Acompanhe peso, composição, sono e adesão — e envie seus reports pelo Telegram.</p>
         <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
-      </div>
+        <p style="margin-top:10px"><span class="tag">em breve: seus próprios dados aqui</span></p>
+      </div>`;
+  }
+
+  function viewSenha(){
+    return `<h2>Minha senha</h2>
       <div class="card">
-        <h3>🔐 Minha senha de acesso</h3>
-        <p>Defina (ou altere) sua senha para entrar na próxima vez direto com e-mail e senha.</p>
+        <h3>🔐 Senha de acesso</h3>
+        <p>Defina (ou altere) sua senha para entrar direto com e-mail e senha na próxima vez.</p>
         <div class="form-grid" style="margin-top:12px">
           <div class="field"><label>Nova senha</label><input id="np1" type="password" placeholder="mín. 6 caracteres"></div>
           <div class="field"><label>Confirmar senha</label><input id="np2" type="password" placeholder="repita a senha"></div>
@@ -173,51 +205,64 @@
         <button class="btn small" id="pwBtn" onclick="definirSenha()">Salvar senha</button>
         <div class="msg" id="pwMsg"></div>
       </div>`;
-    if(linked){
-      h += `<div class="card"><h3>✅ Acompanhamento ativo</h3><p>Você está conectado ao seu profissional. As avaliações lançadas por ele aparecerão aqui.</p></div>`;
-    }
-    return h;
   }
 
   async function definirSenha(){
-    const p1 = document.getElementById("np1").value, p2 = document.getElementById("np2").value;
-    const msg = document.getElementById("pwMsg"), btn = document.getElementById("pwBtn");
-    if(p1.length < 6){ msg.className="msg err"; msg.textContent="A senha precisa ter ao menos 6 caracteres."; return; }
-    if(p1 !== p2){ msg.className="msg err"; msg.textContent="As senhas não coincidem."; return; }
+    const p1=document.getElementById("np1").value, p2=document.getElementById("np2").value;
+    const msg=document.getElementById("pwMsg"), btn=document.getElementById("pwBtn");
+    if(p1.length<6){ msg.className="msg err"; msg.textContent="A senha precisa ter ao menos 6 caracteres."; return; }
+    if(p1!==p2){ msg.className="msg err"; msg.textContent="As senhas não coincidem."; return; }
     btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.auth.updateUser({ password: p1 });
+    const { error } = await sb.auth.updateUser({ password:p1 });
     btn.disabled=false;
     if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
     msg.className="msg ok"; msg.textContent="Senha salva! Já pode entrar com e-mail e senha.";
     document.getElementById("np1").value=""; document.getElementById("np2").value="";
   }
 
-  /* ---------------- PROFISSIONAL ---------------- */
-  function professionalHTML(){
-    return `
+  /* ================= TELA: PERFIL ================= */
+  function viewPerfil(){
+    const falta = !primeiroNome();
+    return `<h2>Meu perfil</h2>
       <div class="card">
-        <h3>➕ Cadastrar aluno</h3>
-        <p>Informe nome e e-mail. Só depois disso o aluno consegue fazer o "primeiro acesso" na página de login — e ele já entra com o nome preenchido.</p>
-        <div class="form-grid" style="margin-top:12px">
-          <div class="field"><label>Nome e sobrenome</label><input id="inviteName" type="text" placeholder="ex: Maria Silva"></div>
-          <div class="field"><label>E-mail</label><input id="inviteEmail" type="email" placeholder="email-do-aluno@exemplo.com"></div>
+        <h3>👤 Meus dados</h3>
+        <p>${falta ? "Informe seu nome para personalizar a saudação." : "Altere seu nome se precisar."}</p>
+        <div class="field" style="margin-top:12px">
+          <label>Nome completo</label>
+          <input id="myName" type="text" value="${esc(ME.full_name||"")}" placeholder="ex: Pietra Rebello">
         </div>
-        <button class="btn small" id="inviteBtn" onclick="cadastrarAluno()">Cadastrar aluno</button>
-        <div class="msg" id="inviteMsg"></div>
-        <div id="invitesBox" style="margin-top:14px"></div>
-      </div>
+        <div class="field"><label>E-mail</label><input type="text" value="${esc(ME.email||"")}" disabled></div>
+        <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar nome</button>
+        <div class="msg" id="nameMsg"></div>
+      </div>`;
+  }
 
+  async function salvarNome(){
+    const v=document.getElementById("myName").value.trim();
+    const msg=document.getElementById("nameMsg"), btn=document.getElementById("nameBtn");
+    if(!v){ msg.className="msg err"; msg.textContent="Digite seu nome."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("profiles").update({ full_name:v }).eq("id", ME.id);
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
+    ME.full_name = v;
+    montar();
+  }
+
+  function viewAdmin(){
+    return `<h2>Painel do criador</h2>
+      <div class="card"><h3>🛠️ Acesso total</h3>
+      <p>Você tem acesso completo à estrutura: profissionais, alunos, dados e configurações.
+         As telas de gestão de profissionais entram numa próxima etapa.</p></div>`;
+  }
+
+  /* ================= TELAS: PROFISSIONAL ================= */
+  function viewAlunos(){
+    return `<h2>Meus alunos</h2>
       <div class="card">
-        <h3>👥 Meus alunos</h3>
-        <div id="studentsBox"><div class="empty">Carregando alunos…</div></div>
+        <h3>👥 Ativos</h3>
+        <div id="studentsBox"><div class="empty">Carregando…</div></div>
       </div>
-
-      <div class="card">
-        <h3>📁 Alunos anteriores</h3>
-        <p>Alunos arquivados. O histórico fica guardado e você pode reativar quando voltarem.</p>
-        <div id="archivedBox" style="margin-top:8px"></div>
-      </div>
-
       <div class="card" id="assessCard" style="display:none">
         <span class="close-x" onclick="fecharForm()">✕</span>
         <h3>➕ Nova avaliação — <span id="assessStudentName"></span></h3>
@@ -235,33 +280,83 @@
       </div>`;
   }
 
-  function creatorHTML(){
-    return `<div class="card"><h3>🛠️ Painel do criador</h3><p>Acesso total à estrutura. Abaixo você também vê a visão de profissional (alunos vinculados a você).</p></div>`
-      + professionalHTML();
+  function viewCadastrar(){
+    return `<h2>Cadastrar aluno</h2>
+      <div class="card">
+        <h3>➕ Novo aluno</h3>
+        <p>Informe nome e e-mail. Só depois disso o aluno consegue fazer o "primeiro acesso" na página de login — e já entra com o nome preenchido.</p>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Nome e sobrenome</label><input id="inviteName" type="text" placeholder="ex: Maria Silva"></div>
+          <div class="field"><label>E-mail</label><input id="inviteEmail" type="email" placeholder="email@exemplo.com"></div>
+        </div>
+        <button class="btn small" id="inviteBtn" onclick="cadastrarAluno()">Cadastrar aluno</button>
+        <div class="msg" id="inviteMsg"></div>
+      </div>
+      <div class="card">
+        <h3>📋 Cadastrados</h3>
+        <div id="invitesBox"><div class="empty">Carregando…</div></div>
+      </div>`;
   }
 
-  async function cadastrarAluno(){
-    const nome  = document.getElementById("inviteName").value.trim();
-    const email = document.getElementById("inviteEmail").value.trim().toLowerCase();
-    const msg = document.getElementById("inviteMsg"), btn = document.getElementById("inviteBtn");
-    if(!nome){ msg.className="msg err"; msg.textContent="Digite o nome do aluno."; return; }
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className="msg err"; msg.textContent="Digite um e-mail válido."; return; }
-    btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("invites").insert({ email, full_name: nome, professional_id: ME.id });
-    btn.disabled=false;
+  function viewInativos(){
+    return `<h2>Alunos inativos</h2>
+      <div class="card">
+        <h3>📁 Arquivados</h3>
+        <p>Perderam o acesso ao painel, mas o histórico fica guardado. Reative quando voltarem.</p>
+        <div id="archivedBox" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  /* ================= DADOS ================= */
+  async function loadStudents(){
+    const { data: studs, error } = await sb.from("profiles").select("*").eq("professional_id", ME.id);
     if(error){
-      if(/duplicate|unique/i.test(error.message)){ msg.className="msg err"; msg.textContent="Esse e-mail já está cadastrado."; }
-      else { msg.className="msg err"; msg.textContent="Erro: "+error.message; }
+      const b=document.getElementById("studentsBox");
+      if(b) b.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`;
       return;
     }
-    msg.className="msg ok"; msg.textContent=nome+" cadastrado! Agora ele pode fazer o primeiro acesso.";
-    document.getElementById("inviteName").value="";
-    document.getElementById("inviteEmail").value="";
+    STUDENTS = studs || [];
+    const { data: ast } = await sb.from("assessments")
+      .select("id,student_id,date,weight,body_fat").order("date",{ascending:false});
+    ASSESS = ast || [];
+    renderStudents();
     loadInvites();
   }
 
+  function linhaAluno(s, arquivado){
+    const nome = nomeAluno(s);
+    const n = ASSESS.filter(a=>a.student_id===s.id).length;
+    const sub = (s.email && s.email!==nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
+    const acoes = arquivado
+      ? `<button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver histórico</button>
+         <button class="btn small" onclick="reativarAluno('${s.id}')">Reativar</button>`
+      : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
+         <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
+         <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
+         <button class="btn small ghost" title="Arquivar" onclick="arquivarAluno('${s.id}')">📁</button>`;
+    return `<div class="student-row">
+      <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
+      <div class="row-actions">${acoes}</div>
+      <div id="assessList_${s.id}" style="width:100%"></div>
+    </div>`;
+  }
+
+  function renderStudents(){
+    const ativos = STUDENTS.filter(s => (s.status||"active") === "active");
+    const arqs   = STUDENTS.filter(s => s.status === "archived");
+    const box = document.getElementById("studentsBox");
+    if(box) box.innerHTML = ativos.length
+      ? ativos.map(s=>linhaAluno(s,false)).join("")
+      : `<div class="empty">Nenhum aluno ativo. Vá em "Cadastrar aluno" para começar.</div>`;
+    const arq = document.getElementById("archivedBox");
+    if(arq) arq.innerHTML = arqs.length
+      ? arqs.map(s=>linhaAluno(s,true)).join("")
+      : `<div class="empty">Nenhum aluno arquivado.</div>`;
+  }
+
   async function loadInvites(){
-    const { data } = await sb.from("invites").select("*").eq("professional_id", ME.id).order("created_at",{ascending:false});
+    const { data } = await sb.from("invites").select("*")
+      .eq("professional_id", ME.id).order("created_at",{ascending:false});
     INVITES = data || [];
     renderInvites();
   }
@@ -269,12 +364,12 @@
   function renderInvites(){
     const box = document.getElementById("invitesBox");
     if(!box) return;
-    if(INVITES.length === 0){ box.innerHTML = `<div class="empty">Nenhum e-mail cadastrado ainda.</div>`; return; }
-    const joined = new Set(STUDENTS.map(s=>(s.email||"").toLowerCase()));
+    if(!INVITES.length){ box.innerHTML = `<div class="empty">Nenhum aluno cadastrado ainda.</div>`; return; }
+    const entraram = new Set(STUDENTS.map(s=>(s.email||"").toLowerCase()));
     box.innerHTML = INVITES.map(iv=>{
-      const ativo = joined.has(iv.email.toLowerCase());
+      const ativo = entraram.has(iv.email.toLowerCase());
       const status = ativo
-        ? `<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">ativo</span>`
+        ? `<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">já entrou</span>`
         : `<span class="tag">aguardando 1º acesso</span>`;
       return `<div class="student-row">
         <div><div class="name">${esc(iv.full_name || iv.email)}</div>
@@ -284,58 +379,39 @@
     }).join("");
   }
 
+  async function cadastrarAluno(){
+    const nome  = document.getElementById("inviteName").value.trim();
+    const email = document.getElementById("inviteEmail").value.trim().toLowerCase();
+    const msg = document.getElementById("inviteMsg"), btn = document.getElementById("inviteBtn");
+    if(!nome){ msg.className="msg err"; msg.textContent="Digite o nome do aluno."; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className="msg err"; msg.textContent="Digite um e-mail válido."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("invites").insert({ email, full_name:nome, professional_id:ME.id });
+    btn.disabled=false;
+    if(error){
+      msg.className="msg err";
+      msg.textContent = /duplicate|unique/i.test(error.message) ? "Esse e-mail já está cadastrado." : "Erro: "+error.message;
+      return;
+    }
+    msg.className="msg ok"; msg.textContent = nome+" cadastrado! Agora ele pode fazer o primeiro acesso.";
+    document.getElementById("inviteName").value=""; document.getElementById("inviteEmail").value="";
+    loadInvites();
+  }
+
   async function removerConvite(email){
-    if(!confirm("Remover o cadastro de "+email+"? (não apaga a conta já criada, só o cadastro do e-mail)")) return;
+    if(!confirm("Remover o cadastro de "+email+"?\n\n(não apaga a conta já criada, apenas o cadastro do e-mail)")) return;
     const { error } = await sb.from("invites").delete().eq("email", email).eq("professional_id", ME.id);
     if(error){ alert("Erro ao remover: "+error.message); return; }
     loadInvites();
   }
 
-  async function loadStudents(){
-    const box = document.getElementById("studentsBox");
-    const { data: studs, error } = await sb.from("profiles").select("*").eq("professional_id", ME.id);
-    if(error){ if(box) box.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`; return; }
-    STUDENTS = studs || [];
-    const { data: ast } = await sb.from("assessments").select("id,student_id,date,weight,body_fat").order("date",{ascending:false});
-    ASSESS = ast || [];
-    renderStudents();
-    loadInvites();
-  }
-
-  function linhaAluno(s, arquivado){
-    const nome = nomeAluno(s);
-    const n = ASSESS.filter(a=>a.student_id===s.id).length;
-    const sub = (s.email && s.email !== nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
-    const acoes = arquivado
-      ? `<button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver histórico</button>
-         <button class="btn small" onclick="reativarAluno('${s.id}')">Reativar</button>`
-      : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
-         <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
-         <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
-         <button class="btn small ghost" title="Arquivar aluno" onclick="arquivarAluno('${s.id}')">📁</button>`;
-    return `<div class="student-row">
-      <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
-      <div class="row-actions">${acoes}</div>
-      <div id="assessList_${s.id}" style="width:100%"></div>
-    </div>`;
-  }
-
-  function renderStudents(){
-    const ativos    = STUDENTS.filter(s => (s.status || "active") === "active");
-    const arquivados= STUDENTS.filter(s => s.status === "archived");
-
-    const box = document.getElementById("studentsBox");
-    if(box){
-      box.innerHTML = ativos.length
-        ? ativos.map(s=>linhaAluno(s,false)).join("")
-        : `<div class="empty">Nenhum aluno ativo ainda. Cadastre o nome e o e-mail acima.</div>`;
-    }
-    const arq = document.getElementById("archivedBox");
-    if(arq){
-      arq.innerHTML = arquivados.length
-        ? arquivados.map(s=>linhaAluno(s,true)).join("")
-        : `<div class="empty">Nenhum aluno arquivado.</div>`;
-    }
+  async function renomearAluno(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    const novo = prompt("Nome do aluno:", s?.full_name || "");
+    if(novo === null) return;
+    const { error } = await sb.from("profiles").update({ full_name: novo.trim()||null }).eq("id", id);
+    if(error){ alert("Erro ao salvar o nome: "+error.message); return; }
+    loadStudents();
   }
 
   async function arquivarAluno(id){
@@ -348,23 +424,8 @@
   }
 
   async function reativarAluno(id){
-    const { error } = await sb.from("profiles")
-      .update({ status:"active", archived_at:null }).eq("id", id);
+    const { error } = await sb.from("profiles").update({ status:"active", archived_at:null }).eq("id", id);
     if(error){ alert("Erro ao reativar: "+error.message); return; }
-    loadStudents();
-  }
-
-  function nomeAluno(s){
-    if(!s) return "Aluno";
-    return s.full_name || s.email || ("Aluno "+shortId(s.id));
-  }
-
-  async function renomearAluno(id){
-    const s = STUDENTS.find(x=>x.id===id);
-    const novo = prompt("Nome do aluno:", s?.full_name || "");
-    if(novo === null) return;
-    const { error } = await sb.from("profiles").update({ full_name: novo.trim() || null }).eq("id", id);
-    if(error){ alert("Erro ao salvar o nome: "+error.message); return; }
     loadStudents();
   }
 
@@ -373,8 +434,9 @@
     if(!el) return;
     if(el.innerHTML){ el.innerHTML=""; return; }
     const list = ASSESS.filter(a=>a.student_id===id);
-    if(list.length===0){ el.innerHTML = `<div class="assess-item">Sem avaliações ainda.</div>`; return; }
-    el.innerHTML = list.map(a=>`<div class="assess-item">${fmtDate(a.date)} — <b>${a.weight??"—"} kg</b>${a.body_fat!=null?` · ${a.body_fat}% gordura`:""}</div>`).join("");
+    el.innerHTML = list.length
+      ? list.map(a=>`<div class="assess-item">${fmtDate(a.date)} — <b>${a.weight??"—"} kg</b>${a.body_fat!=null?` · ${a.body_fat}% gordura`:""}</div>`).join("")
+      : `<div class="assess-item">Sem avaliações ainda.</div>`;
   }
 
   function novaAvaliacao(id){
@@ -385,28 +447,24 @@
     ["a_weight","a_bf","a_lean","a_fat","a_notes"].forEach(f=>document.getElementById(f).value="");
     const card = document.getElementById("assessCard");
     card.style.display="block";
-    document.getElementById("assessMsg").className="msg";
-    document.getElementById("assessMsg").textContent="";
+    const m=document.getElementById("assessMsg"); m.className="msg"; m.textContent="";
     card.scrollIntoView({behavior:"smooth",block:"center"});
   }
-  function fecharForm(){ document.getElementById("assessCard").style.display="none"; }
+  function fecharForm(){ const c=document.getElementById("assessCard"); if(c) c.style.display="none"; }
 
   async function salvarAvaliacao(){
-    const msg = document.getElementById("assessMsg");
-    const btn = document.getElementById("assessSaveBtn");
-    const student_id = document.getElementById("assessStudentId").value;
-    const date = document.getElementById("a_date").value;
+    const msg=document.getElementById("assessMsg"), btn=document.getElementById("assessSaveBtn");
+    const student_id=document.getElementById("assessStudentId").value;
+    const date=document.getElementById("a_date").value;
     if(!student_id || !date){ msg.className="msg err"; msg.textContent="Escolha aluno e data."; return; }
     const num = v => v==="" ? null : Number(v);
-    const row = {
-      student_id, date,
-      weight: num(document.getElementById("a_weight").value),
+    const row = { student_id, date,
+      weight:   num(document.getElementById("a_weight").value),
       body_fat: num(document.getElementById("a_bf").value),
-      lean_mass: num(document.getElementById("a_lean").value),
+      lean_mass:num(document.getElementById("a_lean").value),
       fat_mass: num(document.getElementById("a_fat").value),
-      notes: document.getElementById("a_notes").value.trim() || null,
-      created_by: ME.id
-    };
+      notes:    document.getElementById("a_notes").value.trim() || null,
+      created_by: ME.id };
     btn.disabled=true; msg.className="msg"; msg.textContent="";
     const { error } = await sb.from("assessments").insert(row);
     btn.disabled=false;
