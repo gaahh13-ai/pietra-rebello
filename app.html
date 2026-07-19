@@ -186,8 +186,7 @@
       <div class="card">
         <h3>📊 Sua evolução</h3>
         <p>Acompanhe peso, composição, sono e adesão — e envie seus reports pelo Telegram.</p>
-        <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
-        <p style="margin-top:10px"><span class="tag">em breve: seus próprios dados aqui</span></p>
+        <a class="btn" href="dashboard.html">Abrir meu dashboard →</a>
       </div>`;
   }
 
@@ -326,6 +325,7 @@
       ? `<button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver histórico</button>
          <button class="btn small" onclick="reativarAluno('${s.id}')">Reativar</button>`
       : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
+         <a class="btn small ghost" title="Ver dashboard" href="dashboard.html?aluno=${s.id}">📊</a>
          <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
          <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
          <button class="btn small ghost" title="Arquivar" onclick="arquivarAluno('${s.id}')">📁</button>`;
