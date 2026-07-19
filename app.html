@@ -115,7 +115,6 @@
   function menuFor(role){
     if(role === "student") return [
       {id:"dash",   ico:"📊", label:"Meu dashboard"},
-      {id:"senha",  ico:"🔐", label:"Minha senha"},
       {id:"perfil", ico:"👤", label:"Meu perfil"}
     ];
     const m = [
@@ -173,7 +172,6 @@
     const p = document.getElementById("panel"); if(!p) return;
 
     if(id === "dash")      p.innerHTML = viewDash();
-    else if(id === "senha")p.innerHTML = viewSenha();
     else if(id === "perfil")p.innerHTML = viewPerfil();
     else if(id === "admin")p.innerHTML = viewAdmin();
     else if(id === "alunos"){    p.innerHTML = viewAlunos();    loadStudents(); }
@@ -190,20 +188,6 @@
         <p>Acompanhe peso, composição, sono e adesão — e envie seus reports pelo Telegram.</p>
         <a class="btn" href="https://gaahh13-ai.github.io/dashboard-saude/" target="_blank">Abrir meu dashboard →</a>
         <p style="margin-top:10px"><span class="tag">em breve: seus próprios dados aqui</span></p>
-      </div>`;
-  }
-
-  function viewSenha(){
-    return `<h2>Minha senha</h2>
-      <div class="card">
-        <h3>🔐 Senha de acesso</h3>
-        <p>Defina (ou altere) sua senha para entrar direto com e-mail e senha na próxima vez.</p>
-        <div class="form-grid" style="margin-top:12px">
-          <div class="field"><label>Nova senha</label><input id="np1" type="password" placeholder="mín. 6 caracteres"></div>
-          <div class="field"><label>Confirmar senha</label><input id="np2" type="password" placeholder="repita a senha"></div>
-        </div>
-        <button class="btn small" id="pwBtn" onclick="definirSenha()">Salvar senha</button>
-        <div class="msg" id="pwMsg"></div>
       </div>`;
   }
 
@@ -234,6 +218,17 @@
         <div class="field"><label>E-mail</label><input type="text" value="${esc(ME.email||"")}" disabled></div>
         <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar nome</button>
         <div class="msg" id="nameMsg"></div>
+      </div>
+
+      <div class="card">
+        <h3>🔐 Senha de acesso</h3>
+        <p>Crie uma nova senha para entrar com e-mail e senha na próxima vez.</p>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Nova senha</label><input id="np1" type="password" placeholder="mín. 6 caracteres"></div>
+          <div class="field"><label>Confirmar nova senha</label><input id="np2" type="password" placeholder="repita a senha"></div>
+        </div>
+        <button class="btn small" id="pwBtn" onclick="definirSenha()">Salvar nova senha</button>
+        <div class="msg" id="pwMsg"></div>
       </div>`;
   }
 
