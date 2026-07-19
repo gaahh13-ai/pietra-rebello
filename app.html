@@ -93,15 +93,52 @@
     render();
   }
 
+  function primeiroNome(){
+    const n = (ME.full_name || "").trim();
+    return n ? n.split(/\s+/)[0] : "";
+  }
+
+  function perfilHTML(){
+    const falta = !primeiroNome();
+    return `
+      <div class="card">
+        <h3>👤 Meu perfil</h3>
+        <p>${falta ? "Informe seu nome para personalizar a saudação." : "Altere seu nome se precisar."}</p>
+        <div class="field" style="margin-top:12px">
+          <label>Nome completo</label>
+          <input id="myName" type="text" value="${esc(ME.full_name || "")}" placeholder="ex: Pietra Rebello">
+        </div>
+        <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar nome</button>
+        <div class="msg" id="nameMsg"></div>
+      </div>`;
+  }
+
+  async function salvarNome(){
+    const v = document.getElementById("myName").value.trim();
+    const msg = document.getElementById("nameMsg"), btn = document.getElementById("nameBtn");
+    if(!v){ msg.className="msg err"; msg.textContent="Digite seu nome."; return; }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("profiles").update({ full_name: v }).eq("id", ME.id);
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
+    ME.full_name = v;
+    render();
+  }
+
   function render(){
-    const nome = ME.full_name || ME.email;
     const role = ME.role || "student";
     const rotulo = {creator:"Criador", professional:"Profissional", student:"Aluno"}[role] || role;
-    let html = `<div class="hello">Olá, ${esc(nome)} 👋</div><div class="role-chip chip-${role}">${rotulo}</div>`;
+    const first = primeiroNome();
+    let html = `<div class="hello">${first ? "Olá, "+esc(first)+" 👋" : "Olá! 👋"}</div>
+                <div class="role-chip chip-${role}">${rotulo}</div>`;
+
+    if(!first) html += perfilHTML();   // sem nome: pede logo no topo
 
     if(role === "student")            html += studentHTML();
     else if(role === "professional")  html += professionalHTML();
     else if(role === "creator")       html += creatorHTML();
+
+    if(first) html += perfilHTML();    // já tem nome: fica no fim
 
     document.getElementById("content").innerHTML = html;
     document.getElementById("loading").style.display = "none";
@@ -254,18 +291,46 @@
       return;
     }
     box.innerHTML = STUDENTS.map(s=>{
-      const nome = s.full_name || s.email || ("Aluno "+shortId(s.id));
+      const nome = nomeAluno(s);
       const n = ASSESS.filter(a=>a.student_id===s.id).length;
-      const sub = (s.email && s.email!==nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
+      const sub = (s.email && s.email !== nome) ? `${esc(s.email)} · ${n} avaliação(ões)` : `${n} avaliação(ões)`;
       return `<div class="student-row">
         <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
         <div class="row-actions">
+          <button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
           <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
           <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
+          <button class="btn small ghost" title="Excluir aluno" style="color:#c0392b;border-color:#f3c9c9" onclick="excluirAluno('${s.id}')">🗑</button>
         </div>
         <div id="assessList_${s.id}" style="width:100%"></div>
       </div>`;
     }).join("");
+  }
+
+  function nomeAluno(s){
+    if(!s) return "Aluno";
+    return s.full_name || s.email || ("Aluno "+shortId(s.id));
+  }
+
+  async function renomearAluno(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    const novo = prompt("Nome do aluno:", s?.full_name || "");
+    if(novo === null) return;
+    const { error } = await sb.from("profiles").update({ full_name: novo.trim() || null }).eq("id", id);
+    if(error){ alert("Erro ao salvar o nome: "+error.message); return; }
+    loadStudents();
+  }
+
+  async function excluirAluno(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    const nome = nomeAluno(s);
+    if(!confirm(`Excluir ${nome}?\n\nIsso apaga TODAS as avaliações e o vínculo com você, e remove o e-mail da lista de cadastrados. Não dá para desfazer.`)) return;
+    if(s?.email){
+      await sb.from("invites").delete().eq("email", s.email.toLowerCase()).eq("professional_id", ME.id);
+    }
+    const { error } = await sb.from("profiles").delete().eq("id", id);
+    if(error){ alert("Erro ao excluir: "+error.message); return; }
+    loadStudents();
   }
 
   function verAvaliacoes(id){
@@ -280,7 +345,7 @@
   function novaAvaliacao(id){
     const s = STUDENTS.find(x=>x.id===id);
     document.getElementById("assessStudentId").value = id;
-    document.getElementById("assessStudentName").textContent = s ? (s.full_name || ("Aluno "+shortId(id))) : "";
+    document.getElementById("assessStudentName").textContent = nomeAluno(s);
     document.getElementById("a_date").value = new Date().toISOString().slice(0,10);
     ["a_weight","a_bf","a_lean","a_fat","a_notes"].forEach(f=>document.getElementById(f).value="");
     const card = document.getElementById("assessCard");
