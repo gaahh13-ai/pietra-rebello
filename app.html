@@ -74,6 +74,24 @@
   .proxima{background:linear-gradient(120deg,#fce7f3,#e0e7ff);border-radius:14px;padding:18px}
   .proxima .quando{font-size:19px;font-weight:800;color:var(--pink-deep)}
 
+  /* menu de 3 pontinhos */
+  .menu-wrap{position:relative;display:inline-block}
+  .menu-drop{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:30;background:#fff;
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 28px rgba(120,60,100,.16);
+    min-width:160px;overflow:hidden;padding:4px}
+  .menu-drop.open{display:block}
+  .menu-drop button{display:block;width:100%;text-align:left;border:none;background:none;cursor:pointer;
+    padding:10px 12px;font-size:13.5px;font-weight:600;color:var(--txt);border-radius:9px}
+  .menu-drop button:hover{background:#faf3f8;color:var(--pink-deep)}
+  .dots{font-size:16px;line-height:1;letter-spacing:1px}
+
+  /* formulário de avaliação */
+  .form-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .grupo{margin-top:16px}
+  .grupo-tit{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  @media(max-width:640px){ .form-grid3{grid-template-columns:1fr 1fr} }
+
   @media(max-width:760px){
     .shell{grid-template-columns:1fr}
     .sidebar{position:static;display:flex;gap:6px;overflow-x:auto;padding:8px;-webkit-overflow-scrolling:touch}
@@ -101,6 +119,20 @@
   });
 
   let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null;
+
+  // campos das avaliações
+  const DOBRAS = [
+    ["tricipital","Tricipital"], ["subescapular","Subescapular"], ["peitoral","Peitoral"],
+    ["axilar_media","Axilar média"], ["suprailiaca","Suprailíaca"], ["abdominal","Abdominal"], ["coxa","Coxa"]
+  ];
+  const PERIMETROS = [
+    ["braco_relaxado","Braço relaxado"], ["braco_contraido","Braço contraído"], ["cintura","Cintura"],
+    ["abdominal","Abdominal"], ["quadril","Quadril"], ["coxa","Coxa"], ["panturrilha","Panturrilha"]
+  ];
+  const GERAIS = [
+    ["weight","Peso"," kg"], ["height","Altura"," cm"], ["body_fat","% Gordura","%"],
+    ["lean_mass","Massa magra"," kg"], ["fat_mass","Massa gorda"," kg"]
+  ];
 
   async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
   function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
@@ -253,29 +285,7 @@
       box.innerHTML = `<div class="empty">Você ainda não tem avaliações registradas.<br>Elas aparecerão aqui assim que sua nutricionista lançar a primeira.</div>`;
       return;
     }
-    box.innerHTML = data.map((a,idx)=>{
-      const ant = data[idx+1];
-      const dif = (atual, anterior, un) => {
-        if(atual==null || !ant || anterior==null) return "";
-        const d = Number(atual)-Number(anterior);
-        if(!d) return "";
-        const cls = d>0 ? "up" : "down";
-        return `<span class="dif ${cls}">${d>0?"+":""}${d.toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</span>`;
-      };
-      return `<div class="aval">
-        <div class="aval-head">
-          <b>${fmtDate(a.date)}</b>
-          ${idx===0?'<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">mais recente</span>':''}
-        </div>
-        <div class="meds">
-          ${med("Peso", a.weight, " kg")}${dif(a.weight, ant&&ant.weight," kg")}
-          ${med("% Gordura", a.body_fat, "%")}${dif(a.body_fat, ant&&ant.body_fat," pp")}
-          ${med("Massa magra", a.lean_mass, " kg")}${dif(a.lean_mass, ant&&ant.lean_mass," kg")}
-          ${med("Massa gorda", a.fat_mass, " kg")}${dif(a.fat_mass, ant&&ant.fat_mass," kg")}
-        </div>
-        ${a.notes ? `<div class="obs"><b>Observações:</b> ${esc(a.notes)}</div>` : ""}
-      </div>`;
-    }).join("");
+    box.innerHTML = data.map((a,idx)=>avaliacaoDetalhe(a,idx)).join("");
   }
 
   /* ---------- ALUNO: CONSULTAS NUTRI ---------- */
@@ -378,14 +388,29 @@
         <span class="close-x" onclick="fecharForm()">✕</span>
         <h3>➕ Nova avaliação — <span id="assessStudentName"></span></h3>
         <input type="hidden" id="assessStudentId">
-        <div class="form-grid">
-          <div class="field"><label>Data</label><input id="a_date" type="date"></div>
-          <div class="field"><label>Peso (kg)</label><input id="a_weight" type="number" step="0.1" placeholder="ex: 68.5"></div>
-          <div class="field"><label>% Gordura</label><input id="a_bf" type="number" step="0.1" placeholder="ex: 14.2"></div>
-          <div class="field"><label>Massa magra (kg)</label><input id="a_lean" type="number" step="0.1" placeholder="opcional"></div>
-          <div class="field"><label>Massa gorda (kg)</label><input id="a_fat" type="number" step="0.1" placeholder="opcional"></div>
+        <div class="grupo">
+          <div class="grupo-tit">Dados gerais</div>
+          <div class="form-grid3">
+            <div class="field"><label>Data</label><input id="a_date" type="date"></div>
+            <div class="field"><label>Peso (kg)</label><input id="a_weight" type="number" step="0.1" placeholder="ex: 68,5"></div>
+            <div class="field"><label>Altura (cm)</label><input id="a_height" type="number" step="0.1" placeholder="ex: 175"></div>
+            <div class="field"><label>% Gordura</label><input id="a_bf" type="number" step="0.1" placeholder="ex: 14,2"></div>
+            <div class="field"><label>Massa magra (kg)</label><input id="a_lean" type="number" step="0.1"></div>
+            <div class="field"><label>Massa gorda (kg)</label><input id="a_fat" type="number" step="0.1"></div>
+          </div>
         </div>
-        <div class="field"><label>Observações</label><textarea id="a_notes" rows="2" placeholder="opcional"></textarea></div>
+
+        <div class="grupo">
+          <div class="grupo-tit">Dobras cutâneas (mm)</div>
+          <div class="form-grid3" id="gridDobras"></div>
+        </div>
+
+        <div class="grupo">
+          <div class="grupo-tit">Circunferências (cm)</div>
+          <div class="form-grid3" id="gridPerimetros"></div>
+        </div>
+
+        <div class="field" style="margin-top:16px"><label>Observação</label><textarea id="a_notes" rows="3" placeholder="opcional"></textarea></div>
         <button class="btn small" id="assessSaveBtn" onclick="salvarAvaliacao()">Salvar avaliação</button>
         <div class="msg" id="assessMsg"></div>
       </div>
@@ -455,12 +480,17 @@
     const acoes = arquivado
       ? `<button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver histórico</button>
          <button class="btn small" onclick="reativarAluno('${s.id}')">Reativar</button>`
-      : `<button class="btn small ghost" title="Editar nome" onclick="renomearAluno('${s.id}')">✏️</button>
-         <a class="btn small ghost" title="Ver dashboard" href="dashboard.html?aluno=${s.id}">📊</a>
+      : `<a class="btn small ghost" title="Ver dashboard" href="dashboard.html?aluno=${s.id}">📊</a>
          <button class="btn small ghost" onclick="verAvaliacoes('${s.id}')">Ver</button>
          <button class="btn small ghost" title="Agendar consulta" onclick="novaConsulta('${s.id}')">📅</button>
          <button class="btn small" onclick="novaAvaliacao('${s.id}')">Nova avaliação</button>
-         <button class="btn small ghost" title="Arquivar" onclick="arquivarAluno('${s.id}')">📁</button>`;
+         <span class="menu-wrap">
+           <button class="btn small ghost dots" title="Mais opções" onclick="abrirMenu(event,'menu_${s.id}')">⋮</button>
+           <span class="menu-drop" id="menu_${s.id}">
+             <button onclick="renomearAluno('${s.id}')">Editar nome</button>
+             <button onclick="arquivarAluno('${s.id}')">Arquivar</button>
+           </span>
+         </span>`;
     return `<div class="student-row">
       <div><div class="name">${esc(nome)}</div><div class="meta">${sub}</div></div>
       <div class="row-actions">${acoes}</div>
@@ -532,6 +562,17 @@
     loadInvites();
   }
 
+  function abrirMenu(ev, id){
+    ev.stopPropagation();
+    const alvo = document.getElementById(id);
+    const aberto = alvo && alvo.classList.contains("open");
+    document.querySelectorAll(".menu-drop.open").forEach(m=>m.classList.remove("open"));
+    if(alvo && !aberto) alvo.classList.add("open");
+  }
+  document.addEventListener("click", ()=>{
+    document.querySelectorAll(".menu-drop.open").forEach(m=>m.classList.remove("open"));
+  });
+
   async function renomearAluno(id){
     const s = STUDENTS.find(x=>x.id===id);
     const novo = prompt("Nome do aluno:", s?.full_name || "");
@@ -556,22 +597,58 @@
     loadStudents();
   }
 
-  function verAvaliacoes(id){
+  function chips(obj, lista, un){
+    if(!obj) return "";
+    const itens = lista.filter(([k])=>obj[k]!=null)
+      .map(([k,r])=>`<div class="med"><span>${r}</span><b>${Number(obj[k]).toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</b></div>`);
+    return itens.length ? itens.join("") : "";
+  }
+
+  function avaliacaoDetalhe(a, idx){
+    const gerais = GERAIS.filter(([k])=>a[k]!=null)
+      .map(([k,r,un])=>`<div class="med"><span>${r}</span><b>${Number(a[k]).toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</b></div>`).join("");
+    const dob = chips(a.skinfolds, DOBRAS, " mm");
+    const per = chips(a.circumferences, PERIMETROS, " cm");
+    return `<div class="aval">
+      <div class="aval-head"><b>${fmtDate(a.date)}</b>
+        ${idx===0?'<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">mais recente</span>':''}</div>
+      ${gerais ? `<div class="meds">${gerais}</div>` : ""}
+      ${dob ? `<div class="grupo-tit" style="margin-top:14px">Dobras cutâneas</div><div class="meds">${dob}</div>` : ""}
+      ${per ? `<div class="grupo-tit" style="margin-top:14px">Circunferências</div><div class="meds">${per}</div>` : ""}
+      ${a.notes ? `<div class="obs"><b>Observação:</b> ${esc(a.notes)}</div>` : ""}
+    </div>`;
+  }
+
+  async function verAvaliacoes(id){
     const el = document.getElementById("assessList_"+id);
     if(!el) return;
     if(el.innerHTML){ el.innerHTML=""; return; }
-    const list = ASSESS.filter(a=>a.student_id===id);
-    el.innerHTML = list.length
-      ? list.map(a=>`<div class="assess-item">${fmtDate(a.date)} — <b>${a.weight??"—"} kg</b>${a.body_fat!=null?` · ${a.body_fat}% gordura`:""}</div>`).join("")
-      : `<div class="assess-item">Sem avaliações ainda.</div>`;
+    el.innerHTML = `<div class="empty">Carregando…</div>`;
+    const { data, error } = await sb.from("assessments").select("*")
+      .eq("student_id", id).order("date",{ascending:false});
+    if(error){ el.innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`; return; }
+    el.innerHTML = (data && data.length)
+      ? `<div style="margin-top:12px">${data.map((a,i)=>avaliacaoDetalhe(a,i)).join("")}</div>`
+      : `<div class="empty">Sem avaliações ainda.</div>`;
+  }
+
+  function montarCamposMedidas(){
+    const g1 = document.getElementById("gridDobras"), g2 = document.getElementById("gridPerimetros");
+    if(g1 && !g1.innerHTML) g1.innerHTML = DOBRAS.map(([k,r])=>
+      `<div class="field"><label>${r}</label><input id="dob_${k}" type="number" step="0.1"></div>`).join("");
+    if(g2 && !g2.innerHTML) g2.innerHTML = PERIMETROS.map(([k,r])=>
+      `<div class="field"><label>${r}</label><input id="per_${k}" type="number" step="0.1"></div>`).join("");
   }
 
   function novaAvaliacao(id){
     const s = STUDENTS.find(x=>x.id===id);
+    montarCamposMedidas();
     document.getElementById("assessStudentId").value = id;
     document.getElementById("assessStudentName").textContent = nomeAluno(s);
     document.getElementById("a_date").value = new Date().toISOString().slice(0,10);
-    ["a_weight","a_bf","a_lean","a_fat","a_notes"].forEach(f=>document.getElementById(f).value="");
+    ["a_weight","a_height","a_bf","a_lean","a_fat","a_notes"].forEach(f=>{const e=document.getElementById(f); if(e) e.value="";});
+    DOBRAS.forEach(([k])=>{const e=document.getElementById("dob_"+k); if(e) e.value="";});
+    PERIMETROS.forEach(([k])=>{const e=document.getElementById("per_"+k); if(e) e.value="";});
     const card = document.getElementById("assessCard");
     card.style.display="block";
     const m=document.getElementById("assessMsg"); m.className="msg"; m.textContent="";
@@ -646,12 +723,20 @@
     const student_id=document.getElementById("assessStudentId").value;
     const date=document.getElementById("a_date").value;
     if(!student_id || !date){ msg.className="msg err"; msg.textContent="Escolha aluno e data."; return; }
-    const num = v => v==="" ? null : Number(v);
+    const val = id => { const e=document.getElementById(id); return (!e || e.value==="") ? null : Number(e.value); };
+    const juntar = (pref, lista) => {
+      const o = {};
+      lista.forEach(([k])=>{ const v = val(pref+k); if(v!=null) o[k]=v; });
+      return Object.keys(o).length ? o : null;
+    };
     const row = { student_id, date,
-      weight:   num(document.getElementById("a_weight").value),
-      body_fat: num(document.getElementById("a_bf").value),
-      lean_mass:num(document.getElementById("a_lean").value),
-      fat_mass: num(document.getElementById("a_fat").value),
+      weight:   val("a_weight"),
+      height:   val("a_height"),
+      body_fat: val("a_bf"),
+      lean_mass:val("a_lean"),
+      fat_mass: val("a_fat"),
+      skinfolds:      juntar("dob_", DOBRAS),
+      circumferences: juntar("per_", PERIMETROS),
       notes:    document.getElementById("a_notes").value.trim() || null,
       created_by: ME.id };
     btn.disabled=true; msg.className="msg"; msg.textContent="";
