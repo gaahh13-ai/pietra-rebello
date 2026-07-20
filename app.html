@@ -118,7 +118,7 @@
     auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
   });
 
-  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null;
+  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null;
 
   // campos das avaliações
   const DOBRAS = [
@@ -126,8 +126,9 @@
     ["axilar_media","Axilar média"], ["suprailiaca","Suprailíaca"], ["abdominal","Abdominal"], ["coxa","Coxa"]
   ];
   const PERIMETROS = [
-    ["braco_relaxado","Braço relaxado"], ["braco_contraido","Braço contraído"], ["cintura","Cintura"],
-    ["abdominal","Abdominal"], ["quadril","Quadril"], ["coxa","Coxa"], ["panturrilha","Panturrilha"]
+    ["ombro","Ombro"], ["braco_relaxado","Braço relaxado"], ["braco_contraido","Braço contraído"],
+    ["cintura","Cintura"], ["abdominal","Abdominal"], ["quadril","Quadril"],
+    ["coxa","Coxa"], ["panturrilha","Panturrilha"]
   ];
   const GERAIS = [
     ["weight","Peso"," kg"], ["height","Altura"," cm"], ["body_fat","% Gordura","%"],
@@ -386,7 +387,7 @@
       </div>
       <div class="card" id="assessCard" style="display:none">
         <span class="close-x" onclick="fecharForm()">✕</span>
-        <h3>➕ Nova avaliação — <span id="assessStudentName"></span></h3>
+        <h3><span id="assessTitulo">➕ Nova avaliação —</span> <span id="assessStudentName"></span></h3>
         <input type="hidden" id="assessStudentId">
         <div class="grupo">
           <div class="grupo-tit">Dados gerais</div>
@@ -604,14 +605,15 @@
     return itens.length ? itens.join("") : "";
   }
 
-  function avaliacaoDetalhe(a, idx){
+  function avaliacaoDetalhe(a, idx, podeEditar){
     const gerais = GERAIS.filter(([k])=>a[k]!=null)
       .map(([k,r,un])=>`<div class="med"><span>${r}</span><b>${Number(a[k]).toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</b></div>`).join("");
     const dob = chips(a.skinfolds, DOBRAS, " mm");
     const per = chips(a.circumferences, PERIMETROS, " cm");
     return `<div class="aval">
       <div class="aval-head"><b>${fmtDate(a.date)}</b>
-        ${idx===0?'<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">mais recente</span>':''}</div>
+        ${idx===0?'<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">mais recente</span>':''}
+        ${podeEditar?`<button class="btn small ghost" style="margin:0 0 0 auto" onclick="editarAvaliacao('${a.id}','${a.student_id}')">✏️ Editar</button>`:''}</div>
       ${gerais ? `<div class="meds">${gerais}</div>` : ""}
       ${dob ? `<div class="grupo-tit" style="margin-top:14px">Dobras cutâneas</div><div class="meds">${dob}</div>` : ""}
       ${per ? `<div class="grupo-tit" style="margin-top:14px">Circunferências</div><div class="meds">${per}</div>` : ""}
@@ -628,7 +630,7 @@
       .eq("student_id", id).order("date",{ascending:false});
     if(error){ el.innerHTML = `<div class="empty">Erro: ${esc(error.message)}</div>`; return; }
     el.innerHTML = (data && data.length)
-      ? `<div style="margin-top:12px">${data.map((a,i)=>avaliacaoDetalhe(a,i)).join("")}</div>`
+      ? `<div style="margin-top:12px">${data.map((a,i)=>avaliacaoDetalhe(a,i,true)).join("")}</div>`
       : `<div class="empty">Sem avaliações ainda.</div>`;
   }
 
@@ -640,9 +642,37 @@
       `<div class="field"><label>${r}</label><input id="per_${k}" type="number" step="0.1"></div>`).join("");
   }
 
+  async function editarAvaliacao(avalId, studentId){
+    const { data: a, error } = await sb.from("assessments").select("*").eq("id", avalId).single();
+    if(error || !a){ alert("Não consegui carregar esta avaliação."+(error?" "+error.message:"")); return; }
+    montarCamposMedidas();
+    EDIT_ID = avalId;
+    const s = STUDENTS.find(x=>x.id===studentId);
+    document.getElementById("assessStudentId").value = studentId;
+    document.getElementById("assessStudentName").textContent = nomeAluno(s);
+    document.getElementById("assessTitulo").textContent = "✏️ Editar avaliação —";
+    document.getElementById("assessSaveBtn").textContent = "Salvar alterações";
+
+    const põe = (id, v) => { const e=document.getElementById(id); if(e) e.value = (v==null?"":v); };
+    põe("a_date", a.date ? String(a.date).slice(0,10) : "");
+    põe("a_weight", a.weight); põe("a_height", a.height); põe("a_bf", a.body_fat);
+    põe("a_lean", a.lean_mass); põe("a_fat", a.fat_mass);
+    DOBRAS.forEach(([k])=>põe("dob_"+k, a.skinfolds ? a.skinfolds[k] : null));
+    PERIMETROS.forEach(([k])=>põe("per_"+k, a.circumferences ? a.circumferences[k] : null));
+    põe("a_notes", a.notes);
+
+    const card = document.getElementById("assessCard");
+    card.style.display = "block";
+    const m = document.getElementById("assessMsg"); m.className="msg"; m.textContent="";
+    card.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+
   function novaAvaliacao(id){
     const s = STUDENTS.find(x=>x.id===id);
     montarCamposMedidas();
+    EDIT_ID = null;
+    document.getElementById("assessTitulo").textContent = "➕ Nova avaliação —";
+    document.getElementById("assessSaveBtn").textContent = "Salvar avaliação";
     document.getElementById("assessStudentId").value = id;
     document.getElementById("assessStudentName").textContent = nomeAluno(s);
     document.getElementById("a_date").value = new Date().toISOString().slice(0,10);
@@ -740,11 +770,21 @@
       notes:    document.getElementById("a_notes").value.trim() || null,
       created_by: ME.id };
     btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("assessments").insert(row);
+    let error;
+    if(EDIT_ID){
+      const { created_by, ...campos } = row;
+      ({ error } = await sb.from("assessments").update(campos).eq("id", EDIT_ID));
+    } else {
+      ({ error } = await sb.from("assessments").insert(row));
+    }
     btn.disabled=false;
     if(error){ msg.className="msg err"; msg.textContent="Erro ao salvar: "+error.message; return; }
-    msg.className="msg ok"; msg.textContent="Avaliação salva!";
+    msg.className="msg ok"; msg.textContent = EDIT_ID ? "Alterações salvas!" : "Avaliação salva!";
+    const alvo = student_id;
+    EDIT_ID = null;
     await loadStudents();
+    const lista = document.getElementById("assessList_"+alvo);
+    if(lista && lista.innerHTML){ lista.innerHTML=""; verAvaliacoes(alvo); }
     setTimeout(fecharForm, 800);
   }
 
