@@ -114,7 +114,7 @@
       <a class="link" href="#sobre">Sobre</a>
       <a class="link" href="#servicos">Serviços</a>
       <a class="btn btn-plan" href="#planos">💎 Planos</a>
-      <a class="btn btn-ghost" href="login.html">Login</a>
+      <a class="btn btn-ghost" id="btnAcesso" href="login.html">Login</a>
     </div>
   </div>
 </nav>
@@ -239,6 +239,55 @@
   function closeLogin(){document.getElementById('loginModal').classList.remove('open')}
   function fakeLogin(){alert('O login ainda não está ativo — será conectado ao sistema de acesso dos alunos. Por enquanto, veja o exemplo do dashboard no link do aviso.')}
   document.getElementById('loginModal').addEventListener('click',function(e){if(e.target===this)closeLogin()});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* Mostra o nome de quem está logado no lugar do botão Login */
+  (function(){
+    const SUPABASE_URL = "https://qubjknesswejsddcapom.supabase.co";
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YmprbmVzc3dlanNkZGNhcG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTYzNTYsImV4cCI6MjA5OTkzMjM1Nn0._nDLQ_Q5wN-4eNS0jf-lnyhGHixoZ5_SdXvTvBV_d3E";
+    const DURACAO_MS = 60*60*1000;   // sessão vale 1 hora
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+      auth:{ flowType:"implicit", detectSessionInUrl:true, persistSession:true, autoRefreshToken:true }
+    });
+
+    async function atualizar(){
+      const btn = document.getElementById("btnAcesso");
+      if(!btn) return;
+      const { data:{ session } } = await sb.auth.getSession();
+
+      if(!session){
+        localStorage.removeItem("sessao_inicio");
+        btn.textContent = "Login";
+        btn.href = "login.html";
+        return;
+      }
+
+      // expira em 1 hora
+      const ini = Number(localStorage.getItem("sessao_inicio")||0);
+      if(!ini){ localStorage.setItem("sessao_inicio", String(Date.now())); }
+      else if(Date.now()-ini > DURACAO_MS){
+        localStorage.removeItem("sessao_inicio");
+        await sb.auth.signOut();
+        btn.textContent = "Login";
+        btn.href = "login.html";
+        return;
+      }
+
+      let nome = "";
+      const { data: perfil } = await sb.from("profiles").select("full_name").eq("id", session.user.id).single();
+      if(perfil && perfil.full_name) nome = perfil.full_name.trim().split(/\s+/)[0];
+      if(!nome) nome = (session.user.email||"").split("@")[0];
+
+      btn.textContent = nome;
+      btn.href = "app.html";
+      btn.title = "Ir para a minha área";
+    }
+
+    atualizar();
+    setInterval(atualizar, 60*1000);
+  })();
 </script>
 </body>
 </html>

@@ -84,6 +84,11 @@
 
   sb.auth.getSession().then(({data})=>{ if(data.session) location.href = "app.html"; });
 
+  if(new URLSearchParams(location.search).get("expirou")){
+    localStorage.removeItem("sessao_inicio");
+    setTimeout(()=>showMsg("Sua sessão expirou por segurança. Entre novamente para continuar.","warn"), 200);
+  }
+
   /* ---------- contador de tentativas ---------- */
   function chave(email){ return "tent_" + email.trim().toLowerCase(); }
   function lerTentativas(email){

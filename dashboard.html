@@ -60,6 +60,13 @@
   .note{font-size:13.5px;line-height:1.6;color:var(--txt)}
   .tag{display:inline-block;background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid #fed7aa}
   #loading{text-align:center;padding:90px 20px;color:var(--muted)}
+  .aluno-op{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;
+    border-bottom:1px solid var(--line);text-decoration:none;color:var(--txt);font-weight:700;font-size:14.5px}
+  .aluno-op:last-child{border-bottom:none}
+  .aluno-op:hover{color:var(--pink-deep)}
+  .aluno-op .seta{color:var(--pink)}
+  .quem{display:inline-block;background:#fce7f3;color:#be185d;font-size:12px;font-weight:800;
+    padding:4px 12px;border-radius:999px;margin-top:8px}
 
   @media(max-width:980px){ .kpis{grid-template-columns:repeat(3,1fr)} .grid3{grid-template-columns:1fr} }
   @media(max-width:680px){ .kpis{grid-template-columns:repeat(2,1fr)} .grid2{grid-template-columns:1fr} }
@@ -149,9 +156,25 @@
   });
 
   const CORES = { pink:"#ec4899", lilac:"#818cf8", blue:"#60a5fa", green:"#16a34a", grid:"#f2e2ec", txt:"#9a8aa6" };
-  let ALVO = null;   // perfil do aluno exibido
+  let ALVO = null;          // perfil do aluno exibido
+  let VENDO_OUTRO = false;  // true quando profissional vê o dashboard de um aluno
 
-  async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
+  /* sessão expira em 1 hora */
+  const DURACAO_MS = 60*60*1000;
+  function marcarInicio(){ if(!localStorage.getItem("sessao_inicio")) localStorage.setItem("sessao_inicio", String(Date.now())); }
+  async function expirouSessao(){
+    const ini = Number(localStorage.getItem("sessao_inicio")||0);
+    if(ini && Date.now()-ini > DURACAO_MS){
+      localStorage.removeItem("sessao_inicio");
+      await sb.auth.signOut();
+      location.href = "login.html?expirou=1";
+      return true;
+    }
+    return false;
+  }
+  setInterval(expirouSessao, 60*1000);
+
+  async function sair(){ localStorage.removeItem("sessao_inicio"); await sb.auth.signOut(); location.href = "login.html"; }
   function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
   function fmtDate(d){ if(!d) return "—"; const p=String(d).slice(0,10).split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
   function n1(v){ return (v==null||v==="") ? null : Number(v); }
@@ -165,6 +188,8 @@
         sb.auth.onAuthStateChange((_e,s)=>{ if(s){ clearTimeout(t); res(s); } }); });
     }
     if(!session){ location.href = "login.html"; return; }
+    marcarInicio();
+    if(await expirouSessao()) return;
 
     const user = session.user;
     let { data: me } = await sb.from("profiles").select("*").eq("id", user.id).single();
@@ -172,9 +197,16 @@
 
     // profissional/criador pode abrir o dashboard de um aluno via ?aluno=<id>
     const alunoId = new URLSearchParams(location.search).get("aluno");
-    if(alunoId && me.role !== "student"){
-      const { data: al } = await sb.from("profiles").select("*").eq("id", alunoId).single();
-      ALVO = al || me;
+    if(me.role !== "student"){
+      if(alunoId){
+        const { data: al } = await sb.from("profiles").select("*").eq("id", alunoId).single();
+        ALVO = al || me;
+        VENDO_OUTRO = !!al && al.id !== me.id;
+      } else {
+        // sem aluno escolhido: mostra a lista em vez de um dashboard vazio
+        await escolherAluno(me);
+        return;
+      }
     } else {
       ALVO = me;
     }
@@ -190,9 +222,37 @@
     render(avals || [], (metas && metas[0]) || null, prox ? prox.scheduled_at : null);
   }
 
+  async function escolherAluno(me){
+    const { data: alunos } = await sb.from("profiles").select("*")
+      .eq("professional_id", me.id).order("full_name");
+    const ativos = (alunos||[]).filter(a => (a.status||"active")==="active");
+    const lista = ativos.length
+      ? ativos.map(a=>{
+          const nome = a.full_name || a.email || "Aluno";
+          return `<a class="aluno-op" href="dashboard.html?aluno=${a.id}">
+                    <span>${esc(nome)}</span><span class="seta">→</span></a>`;
+        }).join("")
+      : `<div class="empty">Você ainda não tem alunos ativos.</div>`;
+
+    document.getElementById("content").innerHTML = `
+      <div class="hello">Dashboard dos alunos</div>
+      <div class="sub">Escolha de quem você quer ver a evolução.</div>
+      <div class="card" style="margin-top:20px">${lista}</div>`;
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+  }
+
   function render(avals, meta, proximaConsulta){
-    const nome = (ALVO.full_name || "").trim().split(/\s+/)[0];
-    document.getElementById("hello").textContent = nome ? `Olá, ${nome} 👋` : "Olá! 👋";
+    const ehOutro = VENDO_OUTRO;
+    const nomeCompleto = (ALVO.full_name || ALVO.email || "Aluno").trim();
+    const nome = nomeCompleto.split(/\s+/)[0];
+    const hello = document.getElementById("hello");
+    if(ehOutro){
+      hello.innerHTML = `${esc(nomeCompleto)}<br><span class="quem">você está vendo como profissional</span>`;
+      document.querySelector(".sub").textContent = "Evolução do aluno ao longo do acompanhamento.";
+    } else {
+      hello.textContent = nome ? `Olá, ${nome} 👋` : "Olá! 👋";
+    }
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("content").style.display = "block";

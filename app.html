@@ -143,7 +143,22 @@
     ["lean_mass","Massa magra"," kg"], ["fat_mass","Massa gorda"," kg"]
   ];
 
-  async function sair(){ await sb.auth.signOut(); location.href = "login.html"; }
+  /* sessão expira em 1 hora */
+  const DURACAO_MS = 60*60*1000;
+  function marcarInicio(){ if(!localStorage.getItem("sessao_inicio")) localStorage.setItem("sessao_inicio", String(Date.now())); }
+  async function expirouSessao(){
+    const ini = Number(localStorage.getItem("sessao_inicio")||0);
+    if(ini && Date.now()-ini > DURACAO_MS){
+      localStorage.removeItem("sessao_inicio");
+      await sb.auth.signOut();
+      location.href = "login.html?expirou=1";
+      return true;
+    }
+    return false;
+  }
+  setInterval(expirouSessao, 60*1000);
+
+  async function sair(){ localStorage.removeItem("sessao_inicio"); await sb.auth.signOut(); location.href = "login.html"; }
   function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
   function fmtDate(d){ if(!d) return "—"; const p=String(d).slice(0,10).split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
   function shortId(id){ return String(id||"").slice(0,8); }
@@ -160,6 +175,8 @@
       });
     }
     if(!session){ location.href = "login.html"; return; }
+    marcarInicio();
+    if(await expirouSessao()) return;
     const user = session.user;
     let { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
     if(!profile) profile = { id:user.id, role:"student", full_name:null, professional_id:null, status:"active" };
