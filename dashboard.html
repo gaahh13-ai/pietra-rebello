@@ -179,15 +179,18 @@
       ALVO = me;
     }
 
-    const [{ data: avals }, { data: metas }] = await Promise.all([
+    const [{ data: avals }, { data: metas }, { data: consultas }] = await Promise.all([
       sb.from("assessments").select("*").eq("student_id", ALVO.id).order("date",{ascending:true}),
-      sb.from("goals").select("*").eq("student_id", ALVO.id).limit(1)
+      sb.from("goals").select("*").eq("student_id", ALVO.id).limit(1),
+      sb.from("consultations").select("scheduled_at").eq("student_id", ALVO.id).order("scheduled_at",{ascending:true})
     ]);
 
-    render(avals || [], (metas && metas[0]) || null);
+    const agora = new Date();
+    const prox = (consultas||[]).find(c=>new Date(c.scheduled_at) >= agora);
+    render(avals || [], (metas && metas[0]) || null, prox ? prox.scheduled_at : null);
   }
 
-  function render(avals, meta){
+  function render(avals, meta, proximaConsulta){
     const nome = (ALVO.full_name || "").trim().split(/\s+/)[0];
     document.getElementById("hello").textContent = nome ? `Olá, ${nome} 👋` : "Olá! 👋";
 
@@ -210,13 +213,20 @@
       desenharGraficos(avals);
     }
 
+    if(proximaConsulta){
+      const d = new Date(proximaConsulta);
+      document.getElementById("m_consulta").textContent =
+        d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    }
+
     if(meta){
-      document.getElementById("m_peso").textContent     = meta.ideal_weight   != null ? kg(meta.ideal_weight)  : "—";
-      document.getElementById("m_bf").textContent       = meta.target_bodyfat != null ? pct(meta.target_bodyfat): "—";
-      document.getElementById("m_data").textContent     = fmtDate(meta.target_date);
-      document.getElementById("m_consulta").textContent = fmtDate(meta.next_consultation);
+      document.getElementById("m_peso").textContent = meta.ideal_weight   != null ? kg(meta.ideal_weight)  : "—";
+      document.getElementById("m_bf").textContent   = meta.target_bodyfat != null ? pct(meta.target_bodyfat): "—";
+      document.getElementById("m_data").textContent = fmtDate(meta.target_date);
       if(avals.length && meta.target_bodyfat != null){
         montarProgresso(avals, meta);
+      } else if(avals.length && meta.ideal_weight != null){
+        montarProgressoPeso(avals, meta);
       }
     }
   }
@@ -246,6 +256,21 @@
     const falta = atual - alvo;
     document.getElementById("k_meta").textContent = falta>0 ? pct(falta) : "atingida 🎉";
     document.getElementById("d_meta").textContent = falta>0 ? "de gordura para a meta" : "parabéns!";
+  }
+
+  function montarProgressoPeso(avals, meta){
+    const ini = n1(avals[0].weight), atual = n1(avals[avals.length-1].weight), alvo = n1(meta.ideal_weight);
+    if(ini==null || atual==null || alvo==null) return;
+    const total = Math.abs(ini - alvo), feito = Math.abs(ini - atual);
+    const p = total>0 ? Math.max(0, Math.min(100, (feito/total)*100)) : 0;
+    document.getElementById("progressFill").style.width = p.toFixed(0)+"%";
+    document.getElementById("progIni").textContent   = "Início "+kg(ini);
+    document.getElementById("progAtual").textContent = "Atual "+kg(atual);
+    document.getElementById("progMeta").textContent  = "Meta "+kg(alvo);
+    document.getElementById("progEmpty").style.display = "none";
+    const falta = Math.abs(atual - alvo);
+    document.getElementById("k_meta").textContent = falta>0.05 ? kg(falta) : "atingida 🎉";
+    document.getElementById("d_meta").textContent = falta>0.05 ? "para o peso ideal" : "parabéns!";
   }
 
   const opcoes = (titulo) => ({

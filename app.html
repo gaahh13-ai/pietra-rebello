@@ -424,6 +424,22 @@
         <div class="msg" id="assessMsg"></div>
       </div>
 
+      <div class="card" id="goalsCard" style="display:none">
+        <span class="close-x" onclick="fecharMetas()">✕</span>
+        <h3>🎯 Metas — <span id="goalsStudentName"></span></h3>
+        <p>A meta vale para todo o acompanhamento e só muda quando você quiser — não precisa
+           preencher a cada avaliação. Ela alimenta a barra de progresso no painel do aluno.</p>
+        <input type="hidden" id="goalsStudentId">
+        <input type="hidden" id="goalsId">
+        <div class="form-grid2" style="margin-top:14px">
+          <div class="field"><label>Peso ideal (kg)</label><input id="g_peso" type="number" step="0.1" placeholder="ex: 65"></div>
+          <div class="field"><label>% de gordura alvo</label><input id="g_bf" type="number" step="0.1" placeholder="ex: 20"></div>
+          <div class="field"><label>Data alvo</label><input id="g_data" type="date"></div>
+        </div>
+        <button class="btn small" id="goalsSaveBtn" onclick="salvarMetas()">Salvar metas</button>
+        <div class="msg" id="goalsMsg"></div>
+      </div>
+
       <div class="card" id="consultCard" style="display:none">
         <span class="close-x" onclick="fecharConsulta()">✕</span>
         <h3>📅 Consultas — <span id="consultStudentName"></span></h3>
@@ -496,6 +512,7 @@
          <span class="menu-wrap">
            <button class="btn small ghost dots" title="Mais opções" onclick="abrirMenu(event,'menu_${s.id}')">⋮</button>
            <span class="menu-drop" id="menu_${s.id}">
+             <button onclick="abrirMetas('${s.id}')">Definir metas</button>
              <button onclick="renomearAluno('${s.id}')">Editar nome</button>
              <button onclick="arquivarAluno('${s.id}')">Arquivar</button>
            </span>
@@ -722,6 +739,54 @@
     card.scrollIntoView({behavior:"smooth",block:"center"});
   }
   function fecharForm(){ const c=document.getElementById("assessCard"); if(c) c.style.display="none"; }
+
+  /* ---------- PROFISSIONAL: METAS ---------- */
+  async function abrirMetas(id){
+    const s = STUDENTS.find(x=>x.id===id);
+    document.getElementById("goalsStudentId").value = id;
+    document.getElementById("goalsStudentName").textContent = nomeAluno(s);
+    const msg = document.getElementById("goalsMsg"); msg.className="msg"; msg.textContent="";
+    ["g_peso","g_bf","g_data"].forEach(f=>{const e=document.getElementById(f); if(e) e.value="";});
+    document.getElementById("goalsId").value = "";
+
+    const { data, error } = await sb.from("goals").select("*").eq("student_id", id).limit(1);
+    if(!error && data && data.length){
+      const g = data[0];
+      document.getElementById("goalsId").value = g.id;
+      if(g.ideal_weight   != null) document.getElementById("g_peso").value = g.ideal_weight;
+      if(g.target_bodyfat != null) document.getElementById("g_bf").value   = g.target_bodyfat;
+      if(g.target_date)            document.getElementById("g_data").value = String(g.target_date).slice(0,10);
+    }
+    const card = document.getElementById("goalsCard");
+    card.style.display = "block";
+    card.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function fecharMetas(){ const c=document.getElementById("goalsCard"); if(c) c.style.display="none"; }
+
+  async function salvarMetas(){
+    const msg=document.getElementById("goalsMsg"), btn=document.getElementById("goalsSaveBtn");
+    const student_id=document.getElementById("goalsStudentId").value;
+    const gid=document.getElementById("goalsId").value;
+    const num = id => { const e=document.getElementById(id); return (!e || e.value==="") ? null : Number(e.value); };
+    const data = document.getElementById("g_data").value || null;
+    const campos = {
+      ideal_weight:   num("g_peso"),
+      target_bodyfat: num("g_bf"),
+      target_date:    data,
+      updated_at:     new Date().toISOString()
+    };
+    if(campos.ideal_weight==null && campos.target_bodyfat==null && !data){
+      msg.className="msg err"; msg.textContent="Preencha ao menos uma meta."; return;
+    }
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    let error;
+    if(gid){ ({ error } = await sb.from("goals").update(campos).eq("id", gid)); }
+    else   { ({ error } = await sb.from("goals").insert({ student_id, ...campos })); }
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro ao salvar: "+error.message; return; }
+    msg.className="msg ok"; msg.textContent="Metas salvas! Já aparecem no painel do aluno.";
+    if(!gid) abrirMetas(student_id);
+  }
 
   /* ---------- PROFISSIONAL: CONSULTAS ---------- */
   function novaConsulta(id){
