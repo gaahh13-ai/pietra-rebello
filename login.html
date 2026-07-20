@@ -27,6 +27,7 @@
   .msg{margin-top:14px;font-size:13px;text-align:center;padding:10px;border-radius:10px;display:none;line-height:1.45}
   .msg.err{display:block;background:#fdecec;color:#c0392b}
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
+  .msg.warn{display:block;background:#fff7ed;color:#b45309}
   .back{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--muted);text-decoration:none}
 </style>
 </head>
@@ -34,7 +35,7 @@
 <div class="card">
   <a href="index.html" style="display:block"><img class="logo" src="logo.png" alt="Pietra Rebello"></a>
 
-  <!-- MODO: ENTRAR -->
+  <!-- ENTRAR -->
   <div id="viewLogin">
     <h1>Área do aluno</h1>
     <div class="sub">Acompanhe sua evolução com a Pietra.</div>
@@ -43,16 +44,25 @@
     <button class="btn" id="loginBtn" onclick="entrar()">Entrar</button>
     <div class="links">
       <a class="link" onclick="showView('first')">Primeiro acesso</a>
-      <a class="link muted" onclick="esqueci()">Esqueci minha senha</a>
+      <a class="link muted" onclick="irParaEsqueci()">Esqueci minha senha</a>
     </div>
   </div>
 
-  <!-- MODO: PRIMEIRO ACESSO -->
+  <!-- PRIMEIRO ACESSO -->
   <div id="viewFirst" style="display:none">
     <h1>Primeiro acesso</h1>
     <div class="sub">Digite o e-mail que seu profissional cadastrou. Enviaremos um link de acesso para você entrar e criar sua senha.</div>
     <div class="field"><label>E-mail</label><input id="emailFirst" type="email" placeholder="voce@email.com" autocomplete="email"></div>
     <button class="btn" id="firstBtn" onclick="primeiroAcesso()">Enviar link de acesso</button>
+    <div class="links"><a class="link muted" onclick="showView('login')">← Voltar para entrar</a></div>
+  </div>
+
+  <!-- ESQUECI MINHA SENHA -->
+  <div id="viewForgot" style="display:none">
+    <h1>Redefinir senha</h1>
+    <div class="sub" id="forgotSub">Enviaremos um link para o seu e-mail para você criar uma senha nova.</div>
+    <div class="field"><label>E-mail</label><input id="emailForgot" type="email" placeholder="voce@email.com" autocomplete="email"></div>
+    <button class="btn" id="forgotBtn" onclick="enviarReset()">Enviar link de redefinição</button>
     <div class="links"><a class="link muted" onclick="showView('login')">← Voltar para entrar</a></div>
   </div>
 
@@ -69,38 +79,94 @@
     auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
   });
 
+  const MAX_TENTATIVAS = 5;
+  const JANELA_MIN = 15;   // o bloqueio expira depois de 15 minutos
+
   sb.auth.getSession().then(({data})=>{ if(data.session) location.href = "app.html"; });
 
-  function showMsg(text, ok){
+  /* ---------- contador de tentativas ---------- */
+  function chave(email){ return "tent_" + email.trim().toLowerCase(); }
+  function lerTentativas(email){
+    try{
+      const raw = localStorage.getItem(chave(email));
+      if(!raw) return 0;
+      const o = JSON.parse(raw);
+      if(Date.now() - o.ts > JANELA_MIN*60*1000){ localStorage.removeItem(chave(email)); return 0; }
+      return o.n || 0;
+    }catch(e){ return 0; }
+  }
+  function somarTentativa(email){
+    const n = lerTentativas(email) + 1;
+    try{ localStorage.setItem(chave(email), JSON.stringify({n, ts:Date.now()})); }catch(e){}
+    return n;
+  }
+  function zerarTentativas(email){ try{ localStorage.removeItem(chave(email)); }catch(e){} }
+
+  /* ---------- telas ---------- */
+  function showMsg(text, tipo){
     const el = document.getElementById("msg");
-    el.className = "msg" + (text ? (ok ? " ok" : " err") : "");
+    el.className = "msg" + (text ? " " + (tipo||"err") : "");
     el.textContent = text;
   }
   function showView(v){
-    document.getElementById("viewLogin").style.display = v==="login" ? "block" : "none";
-    document.getElementById("viewFirst").style.display = v==="first" ? "block" : "none";
+    document.getElementById("viewLogin").style.display  = v==="login"  ? "block" : "none";
+    document.getElementById("viewFirst").style.display  = v==="first"  ? "block" : "none";
+    document.getElementById("viewForgot").style.display = v==="forgot" ? "block" : "none";
     showMsg("");
   }
+  function irParaEsqueci(){
+    document.getElementById("emailForgot").value = document.getElementById("email").value.trim();
+    showView("forgot");
+  }
+  function bloquear(email, aviso){
+    document.getElementById("emailForgot").value = email;
+    document.getElementById("forgotSub").textContent =
+      "Por segurança, o acesso com senha foi bloqueado após 5 tentativas. Envie um link para criar uma senha nova.";
+    showView("forgot");
+    showMsg(aviso, "warn");
+  }
 
+  /* ---------- entrar ---------- */
   async function entrar(){
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const btn = document.getElementById("loginBtn");
     if(!email || !password){ showMsg("Preencha e-mail e senha."); return; }
+
+    if(lerTentativas(email) >= MAX_TENTATIVAS){
+      bloquear(email, "Você atingiu o limite de 5 tentativas. Redefina sua senha para continuar.");
+      return;
+    }
+
     btn.disabled = true; showMsg("");
     try{
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if(error) throw error;
+      zerarTentativas(email);
       location.href = "app.html";
-    } catch(e){ showMsg(traduz(e.message)); }
-    finally { btn.disabled = false; }
+    } catch(e){
+      const senhaErrada = /Invalid login/i.test(e.message || "");
+      if(senhaErrada){
+        const usadas = somarTentativa(email);
+        const restam = MAX_TENTATIVAS - usadas;
+        if(restam <= 0){
+          bloquear(email, "Senha incorreta 5 vezes. Enviamos você para a redefinição de senha.");
+        } else {
+          document.getElementById("password").value = "";
+          showMsg(`E-mail ou senha incorretos. ${restam} tentativa${restam>1?"s":""} restante${restam>1?"s":""}.`);
+        }
+      } else {
+        showMsg(traduz(e.message));
+      }
+    } finally { btn.disabled = false; }
   }
 
+  /* ---------- primeiro acesso ---------- */
   async function primeiroAcesso(){
     const email = document.getElementById("emailFirst").value.trim();
     const btn = document.getElementById("firstBtn");
     if(!email){ showMsg("Digite seu e-mail."); return; }
-    btn.disabled = true; showMsg("Verificando…");
+    btn.disabled = true; showMsg("Verificando…", "warn");
     try{
       const { data: invited, error: e1 } = await sb.rpc("is_invited", { p_email: email });
       if(e1) throw e1;
@@ -109,27 +175,29 @@
         btn.disabled = false; return;
       }
       const { error: e2 } = await sb.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true, emailRedirectTo: APP_URL }
+        email, options: { shouldCreateUser: true, emailRedirectTo: APP_URL }
       });
       if(e2) throw e2;
-      showMsg("Pronto! Enviamos um link de acesso para " + email + ". Abra seu e-mail (confira o spam) e clique para entrar.", true);
+      showMsg("Pronto! Enviamos um link de acesso para " + email + ". Abra seu e-mail (confira o spam) e clique para entrar.", "ok");
     } catch(e){ showMsg(traduz(e.message)); btn.disabled = false; }
   }
 
-  async function esqueci(){
-    const email = document.getElementById("email").value.trim();
-    if(!email){ showMsg("Digite seu e-mail no campo acima e clique em \"Esqueci minha senha\"."); return; }
-    showMsg("Enviando…");
+  /* ---------- redefinir senha ---------- */
+  async function enviarReset(){
+    const email = document.getElementById("emailForgot").value.trim();
+    const btn = document.getElementById("forgotBtn");
+    if(!email){ showMsg("Digite seu e-mail."); return; }
+    btn.disabled = true; showMsg("Enviando…", "warn");
     try{
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: RESET_URL });
       if(error) throw error;
-      showMsg("Enviamos um link para redefinir sua senha em " + email + ". Confira sua caixa de entrada (e o spam).", true);
-    } catch(e){ showMsg(traduz(e.message)); }
+      zerarTentativas(email);
+      showMsg("Enviamos um link para " + email + ". Confira sua caixa de entrada (e o spam) e crie uma senha nova.", "ok");
+    } catch(e){ showMsg(traduz(e.message)); btn.disabled = false; }
   }
 
   function traduz(m){
-    if(/Invalid login/i.test(m)) return "E-mail ou senha incorretos. Se é seu primeiro acesso, use \"Primeiro acesso\".";
+    if(/Invalid login/i.test(m)) return "E-mail ou senha incorretos.";
     if(/Email not confirmed/i.test(m)) return "Confirme seu e-mail antes de entrar.";
     if(/rate limit|too many|after/i.test(m)) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
     return m || "Ocorreu um erro. Tente de novo.";
