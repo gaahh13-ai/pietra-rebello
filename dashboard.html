@@ -133,8 +133,8 @@
       <div class="card"><h3>% de Gordura</h3><div class="chart-box" id="box_bf"><canvas id="c_bf"></canvas></div></div>
       <div class="card"><h3>Peso corporal (kg)</h3><div class="chart-box" id="box_peso"><canvas id="c_peso"></canvas></div></div>
       <div class="card"><h3>Massa magra × Massa gorda (kg)</h3><div class="chart-box" id="box_mass"><canvas id="c_mass"></canvas></div></div>
-      <div class="card"><h3>Soma de dobras (mm)</h3><div class="chart-box"><div class="empty">Em breve.</div></div></div>
-      <div class="card"><h3>Perímetros-chave (cm)</h3><div class="chart-box"><div class="empty">Em breve.</div></div></div>
+      <div class="card"><h3>Soma de dobras (mm) — menor é melhor</h3><div class="chart-box" id="box_folds"><canvas id="c_folds"></canvas></div></div>
+      <div class="card" style="grid-column:span 2"><h3>Perímetros-chave (cm)</h3><div class="chart-box" id="box_perim" style="height:300px"><canvas id="c_perim"></canvas></div></div>
       <div class="card"><h3>🎯 Metas</h3>
         <div class="metas" id="metasBox">
           <div><span>Peso ideal</span><b id="m_peso">—</b></div>
@@ -156,6 +156,21 @@
   });
 
   const CORES = { pink:"#ec4899", lilac:"#818cf8", blue:"#60a5fa", green:"#16a34a", grid:"#f2e2ec", txt:"#9a8aa6" };
+
+  // as 7 dobras cutâneas (somadas em um único valor por avaliação)
+  const DOBRAS = ["tricipital","subescapular","peitoral","axilar_media","suprailiaca","abdominal","coxa"];
+
+  // as 8 circunferências, cada uma vira uma linha no gráfico
+  const PERIMETROS = [
+    ["ombro",           "Ombro",           "#38bdf8"],
+    ["braco_relaxado",  "Braço relaxado",  "#16a34a"],
+    ["braco_contraido", "Braço contraído", "#65a30d"],
+    ["cintura",         "Cintura",         "#f59e0b"],
+    ["abdominal",       "Abdominal",       "#f97316"],
+    ["quadril",         "Quadril",         "#a855f7"],
+    ["coxa",            "Coxa",            "#ec4899"],
+    ["panturrilha",     "Panturrilha",     "#0d9488"]
+  ];
   let ALVO = null;          // perfil do aluno exibido
   let VENDO_OUTRO = false;  // true quando profissional vê o dashboard de um aluno
 
@@ -363,6 +378,42 @@
         { label:"massa magra", data:magra, ...linha(CORES.blue) },
         { label:"massa gorda", data:gorda, ...linha(CORES.pink) }] }, options:opcoes(true) });
     else vazio("box_mass");
+
+    // soma das 7 dobras cutâneas — um ponto por avaliação
+    const somas = avals.map(a=>{
+      const d = a.skinfolds;
+      if(!d) return null;
+      const vals = DOBRAS.map(k=>n1(d[k])).filter(v=>v!=null);
+      return vals.length ? vals.reduce((x,y)=>x+y, 0) : null;
+    });
+    if(somas.some(v=>v!=null)) new Chart(document.getElementById("c_folds"),
+      { type:"line", data:{ labels, datasets:[{ label:"soma das dobras", data:somas, ...linha(CORES.green) }] },
+        options:opcoes(false) });
+    else vazio("box_folds");
+
+    // perímetros — uma linha por circunferência
+    const series = PERIMETROS.map(([k,rot,cor])=>{
+      const dados = avals.map(a=> a.circumferences ? n1(a.circumferences[k]) : null);
+      return dados.some(v=>v!=null) ? {
+        label:rot, data:dados, borderColor:cor, backgroundColor:"transparent",
+        borderWidth:2.5, pointBackgroundColor:cor, pointBorderColor:cor,
+        pointRadius:4, pointHoverRadius:6, tension:.3, fill:false, spanGaps:true
+      } : null;
+    }).filter(Boolean);
+
+    if(series.length) new Chart(document.getElementById("c_perim"),
+      { type:"line", data:{ labels, datasets:series },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          interaction:{ mode:"index", intersect:false },
+          plugins:{ legend:{ position:"top", labels:{ color:CORES.txt, usePointStyle:true, pointStyle:"rectRounded", boxWidth:10, font:{size:11} } } },
+          scales:{
+            x:{ grid:{ color:CORES.grid }, ticks:{ color:CORES.txt, font:{size:10} } },
+            y:{ grid:{ color:CORES.grid }, ticks:{ color:CORES.txt, font:{size:10} },
+                title:{ display:true, text:"cm", color:CORES.txt, font:{size:11} } }
+          }
+        } });
+    else vazio("box_perim");
   }
 
   function vazio(idBox){
