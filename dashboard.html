@@ -351,6 +351,32 @@
     return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
   }
 
+  /* Conta os treinos do mês entendendo dois tipos de mensagem:
+     - "treinei hoje"            → soma 1 (ou a quantidade informada)
+     - "esse mês treinei 15x"    → define o total do mês naquele momento
+     Quando há um total declarado, ele vira a base e só somamos os
+     treinos relatados DEPOIS dele. */
+  function contarTreinos(reportsDoMes){
+    const asc = [...reportsDoMes].sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+    let base = 0, apartirDe = -1;
+    for(let i = asc.length - 1; i >= 0; i--){
+      const t = asc[i].parsed && asc[i].parsed.total_treinos_mes;
+      if(t != null && !isNaN(Number(t))){ base = Number(t); apartirDe = i; break; }
+    }
+
+    let extras = 0;
+    for(let i = apartirDe + 1; i < asc.length; i++){
+      const p = asc[i].parsed || {};
+      if(p.total_treinos_mes != null) continue;
+      if(p.treinou === true){
+        const q = Number(p.quantidade_treinos);
+        extras += (!isNaN(q) && q > 0) ? q : 1;
+      }
+    }
+    return base + extras;
+  }
+
   function renderReports(){
     // ---- lista de reports ----
     const box = document.getElementById("reportsBox");
@@ -359,7 +385,8 @@
         ? REPORTS.slice(0,8).map(r=>{
             const p = r.parsed || {};
             const tags = [];
-            if(p.treinou === true)      tags.push(`<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">🏋️ treino</span>`);
+            if(p.total_treinos_mes != null) tags.push(`<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">🏋️ total do mês: ${p.total_treinos_mes}</span>`);
+            else if(p.treinou === true) tags.push(`<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">🏋️ ${(p.quantidade_treinos && p.quantidade_treinos > 1) ? p.quantidade_treinos + " treinos" : "treino"}</span>`);
             if(p.saiu_da_dieta === true)tags.push(`<span class="tag">🍽️ desvio</span>`);
             if(p.peso_kg)               tags.push(`<span class="tag" style="background:#eef4ff;color:#1d4ed8;border-color:#c7dbff">⚖️ ${p.peso_kg} kg</span>`);
             return `<div class="rep">
@@ -378,7 +405,7 @@
       const d = new Date(r.date);
       return d.getMonth()===agora.getMonth() && d.getFullYear()===agora.getFullYear();
     });
-    const treinos = mesAtual.filter(r=>r.parsed && r.parsed.treinou === true).length;
+    const treinos = contarTreinos(mesAtual);
     const desvios = mesAtual.filter(r=>r.parsed && r.parsed.saiu_da_dieta === true).length;
 
     if(!REPORTS.length){
