@@ -519,6 +519,7 @@
           <div class="field"><label>Peso ideal (kg)</label><input id="g_peso" type="number" step="0.1" placeholder="ex: 65"></div>
           <div class="field"><label>% de gordura alvo</label><input id="g_bf" type="number" step="0.1" placeholder="ex: 20"></div>
           <div class="field"><label>Data alvo</label><input id="g_data" type="date"></div>
+          <div class="field"><label>Treinos por mês</label><input id="g_treinos" type="number" step="1" min="0" placeholder="ex: 20"></div>
         </div>
         <button class="btn small" id="goalsSaveBtn" onclick="salvarMetas()">Salvar metas</button>
         <div class="msg" id="goalsMsg"></div>
@@ -830,7 +831,7 @@
     document.getElementById("goalsStudentId").value = id;
     document.getElementById("goalsStudentName").textContent = nomeAluno(s);
     const msg = document.getElementById("goalsMsg"); msg.className="msg"; msg.textContent="";
-    ["g_peso","g_bf","g_data"].forEach(f=>{const e=document.getElementById(f); if(e) e.value="";});
+    ["g_peso","g_bf","g_data","g_treinos"].forEach(f=>{const e=document.getElementById(f); if(e) e.value="";});
     document.getElementById("goalsId").value = "";
 
     const { data, error } = await sb.from("goals").select("*").eq("student_id", id).limit(1);
@@ -840,6 +841,7 @@
       if(g.ideal_weight   != null) document.getElementById("g_peso").value = g.ideal_weight;
       if(g.target_bodyfat != null) document.getElementById("g_bf").value   = g.target_bodyfat;
       if(g.target_date)            document.getElementById("g_data").value = String(g.target_date).slice(0,10);
+      if(g.monthly_workouts != null) document.getElementById("g_treinos").value = g.monthly_workouts;
     }
     const card = document.getElementById("goalsCard");
     card.style.display = "block";
@@ -854,12 +856,13 @@
     const num = id => { const e=document.getElementById(id); return (!e || e.value==="") ? null : Number(e.value); };
     const data = document.getElementById("g_data").value || null;
     const campos = {
-      ideal_weight:   num("g_peso"),
-      target_bodyfat: num("g_bf"),
-      target_date:    data,
-      updated_at:     new Date().toISOString()
+      ideal_weight:     num("g_peso"),
+      target_bodyfat:   num("g_bf"),
+      target_date:      data,
+      monthly_workouts: num("g_treinos"),
+      updated_at:       new Date().toISOString()
     };
-    if(campos.ideal_weight==null && campos.target_bodyfat==null && !data){
+    if(campos.ideal_weight==null && campos.target_bodyfat==null && !data && campos.monthly_workouts==null){
       msg.className="msg err"; msg.textContent="Preencha ao menos uma meta."; return;
     }
     btn.disabled=true; msg.className="msg"; msg.textContent="";
