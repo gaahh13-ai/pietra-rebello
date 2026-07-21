@@ -246,7 +246,7 @@
     const nav = document.getElementById("nav_"+id); if(nav) nav.classList.add("active");
     const p = document.getElementById("panel"); if(!p) return;
 
-    if(id === "dash")      p.innerHTML = viewDash();
+    if(id === "dash"){     p.innerHTML = viewDash(); carregarTelegram(); }
     else if(id === "avaliacoes"){ p.innerHTML = viewAvaliacoes(); carregarMinhasAvaliacoes(); }
     else if(id === "consultas"){  p.innerHTML = viewConsultas();  carregarMinhasConsultas(); }
     else if(id === "perfil")p.innerHTML = viewPerfil();
@@ -264,7 +264,44 @@
         <h3>📊 Sua evolução</h3>
         <p>Acompanhe peso, composição, sono e adesão — e envie seus reports pelo Telegram.</p>
         <a class="btn" href="dashboard.html">Abrir meu dashboard →</a>
+      </div>
+      <div class="card">
+        <h3>💬 Reports pelo Telegram</h3>
+        <div id="tgBox"><div class="empty">Carregando…</div></div>
       </div>`;
+  }
+
+  async function carregarTelegram(){
+    const box = document.getElementById("tgBox");
+    if(!box) return;
+    const { data: bot, error } = await sb.rpc("meu_bot_telegram");
+    if(error || !bot){
+      box.innerHTML = `<div class="empty">Sua nutricionista ainda não ativou os reports por Telegram.</div>`;
+      return;
+    }
+    if(ME.telegram_chat_id){
+      box.innerHTML = `
+        <p>✅ <b>Conectado.</b> É só mandar mensagem para <b>@${esc(bot)}</b> contando como foi o seu dia —
+           treino, alimentação, sono — com as suas palavras. Eu registro tudo automaticamente.</p>
+        <a class="btn small" href="https://t.me/${encodeURIComponent(bot)}" target="_blank">Abrir conversa</a>
+        <button class="btn small ghost" onclick="gerarLinkTelegram('${esc(bot)}')">Reconectar</button>`;
+      return;
+    }
+    box.innerHTML = `
+      <p>Envie seus reports por mensagem, do jeito que preferir escrever. Conecte uma vez e pronto.</p>
+      <button class="btn small" onclick="gerarLinkTelegram('${esc(bot)}')">Conectar meu Telegram</button>
+      <div class="msg" id="tgMsg"></div>`;
+  }
+
+  async function gerarLinkTelegram(bot){
+    const msg = document.getElementById("tgMsg");
+    const { data: token, error } = await sb.rpc("meu_token_telegram");
+    if(error || !token){
+      if(msg){ msg.className="msg err"; msg.textContent="Não consegui gerar seu link agora. Tente de novo."; }
+      return;
+    }
+    if(msg){ msg.className="msg ok"; msg.textContent="Abrindo o Telegram… toque em INICIAR para concluir."; }
+    window.open(`https://t.me/${bot}?start=${token}`, "_blank");
   }
 
   async function definirSenha(){
