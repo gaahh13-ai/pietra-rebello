@@ -112,18 +112,28 @@
       <div class="card kpi a"> <div class="label">Falta p/ meta</div><div class="val" id="k_meta">—</div>   <div class="delta" id="d_meta">defina uma meta</div></div>
     </div>
 
-    <!-- Progresso -->
-    <div class="section-title">🎯 Progresso rumo à meta</div>
-    <div class="card">
-      <div class="bar-track"><div class="bar-fill" id="progressFill"></div></div>
-      <div class="bar-legend"><span id="progIni">Início —</span><span id="progAtual">Atual —</span><span id="progMeta">Meta —</span></div>
-      <div class="empty" id="progEmpty" style="margin-top:14px">Sua meta aparecerá aqui assim que a Pietra definir seu objetivo.</div>
+    <!-- Progresso e treino, lado a lado -->
+    <div class="section-title">🎯 Progresso &amp; 🏋️ Treino</div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Rumo à meta</h3>
+        <div class="bar-track"><div class="bar-fill" id="progressFill"></div></div>
+        <div class="bar-legend"><span id="progIni">Início —</span><span id="progAtual">Atual —</span><span id="progMeta">Meta —</span></div>
+        <div class="empty" id="progEmpty" style="margin-top:14px">Sua meta aparecerá aqui assim que a Pietra definir seu objetivo.</div>
+      </div>
+      <div class="card">
+        <h3>Treinos do mês — realizado × meta</h3>
+        <div id="treinoBox">
+          <div class="empty">Sem reports ainda. Envie mensagens pelo Telegram para este bloco ganhar vida.</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Treino -->
-    <div class="section-title">🏋️ Performance de treino — realizado × meta (mês)</div>
-    <div class="card" id="treinoBox">
-      <div class="empty">Sem reports ainda. Envie mensagens pelo Telegram para este bloco ganhar vida.</div>
+    <!-- Acompanhamento -->
+    <div class="section-title">💬 Acompanhamento</div>
+    <div class="grid2">
+      <div class="card"><h3>Meus reports</h3><div id="reportsBox"><div class="empty">Nenhum report enviado ainda.</div></div></div>
+      <div class="card"><h3>🧑‍⚕️ Observações da nutricionista</h3><div id="obsBox"><div class="empty">Nenhuma observação registrada ainda.</div></div></div>
     </div>
 
     <!-- Sono e dieta -->
@@ -131,13 +141,6 @@
     <div class="grid2">
       <div class="card"><h3>Qualidade do sono</h3><div class="empty">Em breve.</div></div>
       <div class="card"><h3>Dieta — nota &amp; comentário</h3><div class="empty">Em breve.</div></div>
-    </div>
-
-    <!-- Feedback -->
-    <div class="section-title">💬 Acompanhamento</div>
-    <div class="grid2">
-      <div class="card"><h3>Meus reports</h3><div id="reportsBox"><div class="empty">Nenhum report enviado ainda.</div></div></div>
-      <div class="card"><h3>🧑‍⚕️ Observações da nutricionista</h3><div id="obsBox"><div class="empty">Nenhuma observação registrada ainda.</div></div></div>
     </div>
 
     <!-- Evolução -->
