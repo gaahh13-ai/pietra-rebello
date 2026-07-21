@@ -188,6 +188,7 @@
   let VENDO_OUTRO = false;  // true quando profissional vê o dashboard de um aluno
   let REPORTS = [];         // mensagens recebidas pelo Telegram
   let META = null;          // metas do aluno
+  const FUSO = "America/Sao_Paulo";
 
   /* sessão expira em 1 hora */
   const DURACAO_MS = 60*60*1000;
@@ -356,23 +357,43 @@
      - "esse mês treinei 15x"    → define o total do mês naquele momento
      Quando há um total declarado, ele vira a base e só somamos os
      treinos relatados DEPOIS dele. */
+  // dia a que o report se refere (o citado pela pessoa, ou o dia do envio)
+  function diaDoReport(r){
+    const p = r.parsed || {};
+    if(p.data_referencia) return String(p.data_referencia).slice(0,10);
+    return new Date(r.date).toLocaleDateString("en-CA", { timeZone: FUSO });
+  }
+
   function contarTreinos(reportsDoMes){
     const asc = [...reportsDoMes].sort((a,b)=> new Date(a.date) - new Date(b.date));
 
+    // último total declarado vira a base
     let base = 0, apartirDe = -1;
     for(let i = asc.length - 1; i >= 0; i--){
       const t = asc[i].parsed && asc[i].parsed.total_treinos_mes;
       if(t != null && !isNaN(Number(t))){ base = Number(t); apartirDe = i; break; }
     }
 
+    // dias já cobertos — evita contar duas vezes o mesmo dia
+    const diasContados = new Set();
+    if(apartirDe >= 0) diasContados.add(diaDoReport(asc[apartirDe]));
+
     let extras = 0;
     for(let i = apartirDe + 1; i < asc.length; i++){
       const p = asc[i].parsed || {};
       if(p.total_treinos_mes != null) continue;
-      if(p.treinou === true){
-        const q = Number(p.quantidade_treinos);
-        extras += (!isNaN(q) && q > 0) ? q : 1;
-      }
+      if(p.treinou !== true) continue;
+
+      const dia = diaDoReport(asc[i]);
+      const q = Number(p.quantidade_treinos);
+
+      // relato de vários treinos de uma vez ("treinei sábado e domingo")
+      if(!isNaN(q) && q > 1){ extras += q; diasContados.add(dia); continue; }
+
+      // um treino por dia: se o dia já foi contado, ignora
+      if(diasContados.has(dia)) continue;
+      extras += 1;
+      diasContados.add(dia);
     }
     return base + extras;
   }
