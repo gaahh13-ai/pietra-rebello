@@ -56,6 +56,9 @@
   .metas div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
   .metas div:last-child{border-bottom:none}
   .metas b{color:var(--pink-deep)}
+  .cd{font-weight:600;color:var(--muted);font-size:12px;margin-left:2px}
+  .cd.hoje{color:var(--pink-deep)}
+  .cd.venceu{color:#c0392b}
 
   .note{font-size:13.5px;line-height:1.6;color:var(--txt)}
   .tag{display:inline-block;background:#fff7ed;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid #fed7aa}
@@ -312,13 +315,32 @@
     if(meta){
       document.getElementById("m_peso").textContent = meta.ideal_weight   != null ? kg(meta.ideal_weight)  : "—";
       document.getElementById("m_bf").textContent   = meta.target_bodyfat != null ? pct(meta.target_bodyfat): "—";
-      document.getElementById("m_data").textContent = fmtDate(meta.target_date);
+      document.getElementById("m_data").innerHTML = fmtDate(meta.target_date) + contagem(meta.target_date);
       if(avals.length && meta.target_bodyfat != null){
         montarProgresso(avals, meta);
       } else if(avals.length && meta.ideal_weight != null){
         montarProgressoPeso(avals, meta);
       }
     }
+  }
+
+  // "(faltam 3 meses)" ou, abaixo de um mês, "(faltam 12 dias)"
+  function contagem(dataAlvo){
+    if(!dataAlvo) return "";
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const alvo = new Date(String(dataAlvo).slice(0,10) + "T00:00:00");
+    if(isNaN(alvo)) return "";
+    const dias = Math.round((alvo - hoje) / 86400000);
+
+    if(dias < 0)   return ` <span class="cd venceu">(prazo encerrado)</span>`;
+    if(dias === 0) return ` <span class="cd hoje">(é hoje!)</span>`;
+    if(dias === 1) return ` <span class="cd">(falta 1 dia)</span>`;
+    if(dias < 30)  return ` <span class="cd">(faltam ${dias} dias)</span>`;
+
+    const meses = Math.round(dias / 30.44);
+    return meses === 1
+      ? ` <span class="cd">(falta 1 mês)</span>`
+      : ` <span class="cd">(faltam ${meses} meses)</span>`;
   }
 
   function fmtQuando(v){
