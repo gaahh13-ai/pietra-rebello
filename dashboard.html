@@ -74,6 +74,9 @@
   .rep:last-child{border-bottom:none}
   .rep-top{font-size:11.5px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
   .rep-txt{font-size:13.5px;line-height:1.5;color:var(--txt)}
+  .ver-mais{display:block;width:100%;margin-top:10px;padding:9px;border:1px dashed var(--line);
+    background:#fffdfe;border-radius:11px;color:var(--pink-deep);font-weight:700;font-size:12.5px;cursor:pointer}
+  .ver-mais:hover{background:#faf3f8}
   .treino-linha{display:flex;align-items:center;gap:18px}
   .treino-num{font-size:44px;font-weight:800;line-height:1;
     background:linear-gradient(120deg,#f472b6,#818cf8);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -296,6 +299,7 @@
 
     META = meta;
     renderReports();
+    renderObs(avals);
 
     if(avals.length){
       const ult = avals[avals.length-1];
@@ -306,10 +310,6 @@
       setKpi("k_bf","d_bf",     pct(n1(ult.body_fat)),delta(n1(ult.body_fat),ant && n1(ant.body_fat),"pp"));
       setKpi("k_lean","d_lean", kg(n1(ult.lean_mass)),delta(n1(ult.lean_mass),ant && n1(ant.lean_mass),"kg"));
 
-      if(ult.notes){
-        document.getElementById("obsBox").innerHTML =
-          `<div class="note">${esc(ult.notes)}</div><div style="margin-top:10px"><span class="tag">avaliação de ${fmtDate(ult.date)}</span></div>`;
-      }
       desenharGraficos(avals);
     }
 
@@ -401,12 +401,50 @@
     return base + extras;
   }
 
+  /* Mostra os 3 primeiros e esconde o resto atrás de um botão */
+  function listaComVerMais(itens, base, rotulo){
+    if(!itens.length) return "";
+    if(itens.length <= 3) return itens.join("");
+    const restantes = itens.length - 3;
+    const label = `▾ Ver mais ${restantes} ${rotulo}`;
+    return `${itens.slice(0,3).join("")}
+      <div id="${base}_mais" style="display:none">${itens.slice(3).join("")}</div>
+      <button class="ver-mais" id="${base}_btn" data-fechado="${label}" onclick="alternarLista('${base}')">${label}</button>`;
+  }
+
+  function alternarLista(base){
+    const box = document.getElementById(base + "_mais");
+    const btn = document.getElementById(base + "_btn");
+    if(!box || !btn) return;
+    const aberto = box.style.display !== "none";
+    box.style.display = aberto ? "none" : "block";
+    btn.textContent = aberto ? btn.dataset.fechado : "▴ Ver menos";
+  }
+
+  function renderObs(avals){
+    const box = document.getElementById("obsBox");
+    if(!box) return;
+    const comNotas = [...avals]
+      .filter(a => a.notes && String(a.notes).trim())
+      .sort((a,b)=> new Date(b.date) - new Date(a.date));
+    if(!comNotas.length){
+      box.innerHTML = `<div class="empty">Nenhuma observação registrada ainda.</div>`;
+      return;
+    }
+    const itens = comNotas.map(a=>`
+      <div class="rep">
+        <div class="rep-top">avaliação de ${fmtDate(a.date)}</div>
+        <div class="rep-txt">${esc(a.notes)}</div>
+      </div>`);
+    box.innerHTML = listaComVerMais(itens, "obs", comNotas.length-3 === 1 ? "observação" : "observações");
+  }
+
   function renderReports(){
     // ---- lista de reports ----
     const box = document.getElementById("reportsBox");
     if(box){
       box.innerHTML = REPORTS.length
-        ? REPORTS.slice(0,8).map(r=>{
+        ? listaComVerMais(REPORTS.map(r=>{
             const p = r.parsed || {};
             const tags = [];
             if(p.total_treinos_mes != null) tags.push(`<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">🏋️ total do mês: ${p.total_treinos_mes}</span>`);
@@ -417,7 +455,7 @@
               <div class="rep-top">${fmtQuando(r.date)} ${tags.join(" ")}</div>
               <div class="rep-txt">${esc(r.message || "")}</div>
             </div>`;
-          }).join("")
+          }), "reps", REPORTS.length-3 === 1 ? "report" : "reports")
         : `<div class="empty">Nenhum report enviado ainda.<br>Conecte o Telegram no seu painel e mande a primeira mensagem.</div>`;
     }
 
