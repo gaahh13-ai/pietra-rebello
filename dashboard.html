@@ -67,6 +67,15 @@
   .aluno-op .seta{color:var(--pink)}
   .quem{display:inline-block;background:#fce7f3;color:#be185d;font-size:12px;font-weight:800;
     padding:4px 12px;border-radius:999px;margin-top:8px}
+  .rep{padding:11px 0;border-bottom:1px dashed var(--line)}
+  .rep:last-child{border-bottom:none}
+  .rep-top{font-size:11.5px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
+  .rep-txt{font-size:13.5px;line-height:1.5;color:var(--txt)}
+  .treino-linha{display:flex;align-items:center;gap:18px}
+  .treino-num{font-size:44px;font-weight:800;line-height:1;
+    background:linear-gradient(120deg,#f472b6,#818cf8);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .treino-rot{font-size:15px;font-weight:700}
+  .meta-sm{font-size:12px;color:var(--muted);margin-top:4px}
 
   @media(max-width:980px){ .kpis{grid-template-columns:repeat(3,1fr)} .grid3{grid-template-columns:1fr} }
   @media(max-width:680px){ .kpis{grid-template-columns:repeat(2,1fr)} .grid2{grid-template-columns:1fr} }
@@ -109,8 +118,8 @@
 
     <!-- Treino -->
     <div class="section-title">🏋️ Performance de treino — realizado × meta (mês)</div>
-    <div class="card">
-      <div class="empty">Em breve: seus treinos do mês aparecerão aqui.<br>Este bloco será alimentado pelos seus reports.</div>
+    <div class="card" id="treinoBox">
+      <div class="empty">Sem reports ainda. Envie mensagens pelo Telegram para este bloco ganhar vida.</div>
     </div>
 
     <!-- Sono e dieta -->
@@ -123,7 +132,7 @@
     <!-- Feedback -->
     <div class="section-title">💬 Acompanhamento</div>
     <div class="grid2">
-      <div class="card"><h3>Meus reports</h3><div class="empty">Em breve: seus envios aparecerão aqui.</div></div>
+      <div class="card"><h3>Meus reports</h3><div id="reportsBox"><div class="empty">Nenhum report enviado ainda.</div></div></div>
       <div class="card"><h3>🧑‍⚕️ Observações da nutricionista</h3><div id="obsBox"><div class="empty">Nenhuma observação registrada ainda.</div></div></div>
     </div>
 
@@ -173,6 +182,7 @@
   ];
   let ALVO = null;          // perfil do aluno exibido
   let VENDO_OUTRO = false;  // true quando profissional vê o dashboard de um aluno
+  let REPORTS = [];         // mensagens recebidas pelo Telegram
 
   /* sessão expira em 1 hora */
   const DURACAO_MS = 60*60*1000;
@@ -226,11 +236,14 @@
       ALVO = me;
     }
 
-    const [{ data: avals }, { data: metas }, { data: consultas }] = await Promise.all([
+    const [{ data: avals }, { data: metas }, { data: consultas }, { data: reports }] = await Promise.all([
       sb.from("assessments").select("*").eq("student_id", ALVO.id).order("date",{ascending:true}),
       sb.from("goals").select("*").eq("student_id", ALVO.id).limit(1),
-      sb.from("consultations").select("scheduled_at").eq("student_id", ALVO.id).order("scheduled_at",{ascending:true})
+      sb.from("consultations").select("scheduled_at").eq("student_id", ALVO.id).order("scheduled_at",{ascending:true}),
+      sb.from("reports").select("*").eq("student_id", ALVO.id).order("date",{ascending:false}).limit(60)
     ]);
+
+    REPORTS = reports || [];
 
     const agora = new Date();
     const prox = (consultas||[]).find(c=>new Date(c.scheduled_at) >= agora);
@@ -272,6 +285,8 @@
     document.getElementById("loading").style.display = "none";
     document.getElementById("content").style.display = "block";
 
+    renderReports();
+
     if(avals.length){
       const ult = avals[avals.length-1];
       const ant = avals.length > 1 ? avals[avals.length-2] : null;
@@ -303,6 +318,64 @@
       } else if(avals.length && meta.ideal_weight != null){
         montarProgressoPeso(avals, meta);
       }
+    }
+  }
+
+  function fmtQuando(v){
+    const d = new Date(v);
+    return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }
+
+  function renderReports(){
+    // ---- lista de reports ----
+    const box = document.getElementById("reportsBox");
+    if(box){
+      box.innerHTML = REPORTS.length
+        ? REPORTS.slice(0,8).map(r=>{
+            const p = r.parsed || {};
+            const tags = [];
+            if(p.treinou === true)      tags.push(`<span class="tag" style="background:#eafaf0;color:#1a8a4a;border-color:#bbeccb">🏋️ treino</span>`);
+            if(p.saiu_da_dieta === true)tags.push(`<span class="tag">🍽️ desvio</span>`);
+            if(p.peso_kg)               tags.push(`<span class="tag" style="background:#eef4ff;color:#1d4ed8;border-color:#c7dbff">⚖️ ${p.peso_kg} kg</span>`);
+            return `<div class="rep">
+              <div class="rep-top">${fmtQuando(r.date)} ${tags.join(" ")}</div>
+              <div class="rep-txt">${esc(r.message || "")}</div>
+            </div>`;
+          }).join("")
+        : `<div class="empty">Nenhum report enviado ainda.<br>Conecte o Telegram no seu painel e mande a primeira mensagem.</div>`;
+    }
+
+    // ---- treinos do mês ----
+    const alvoBox = document.getElementById("treinoBox");
+    if(!alvoBox) return;
+    const agora = new Date();
+    const mesAtual = REPORTS.filter(r=>{
+      const d = new Date(r.date);
+      return d.getMonth()===agora.getMonth() && d.getFullYear()===agora.getFullYear();
+    });
+    const treinos = mesAtual.filter(r=>r.parsed && r.parsed.treinou === true).length;
+    const desvios = mesAtual.filter(r=>r.parsed && r.parsed.saiu_da_dieta === true).length;
+
+    if(!REPORTS.length){
+      alvoBox.innerHTML = `<div class="empty">Sem reports ainda. Envie mensagens pelo Telegram para este bloco ganhar vida.</div>`;
+      return;
+    }
+    const mes = agora.toLocaleDateString("pt-BR",{month:"long"});
+    alvoBox.innerHTML = `
+      <div class="treino-linha">
+        <div class="treino-num">${treinos}</div>
+        <div>
+          <div class="treino-rot">treino(s) registrado(s) em ${mes}</div>
+          <div class="meta-sm">${mesAtual.length} report(s) no mês${desvios ? ` · ${desvios} desvio(s) de dieta` : ""}</div>
+        </div>
+      </div>`;
+
+    // KPI de dieta: média das notas, quando houver
+    const notas = REPORTS.map(r=>r.parsed && r.parsed.nota_dieta).filter(v=>v!=null).map(Number);
+    if(notas.length){
+      const media = notas.reduce((a,b)=>a+b,0)/notas.length;
+      const el = document.getElementById("k_dieta");
+      if(el) el.textContent = media.toLocaleString("pt-BR",{maximumFractionDigits:1});
     }
   }
 
