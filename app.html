@@ -246,10 +246,10 @@
     const nav = document.getElementById("nav_"+id); if(nav) nav.classList.add("active");
     const p = document.getElementById("panel"); if(!p) return;
 
-    if(id === "dash"){     p.innerHTML = viewDash(); carregarTelegram(); }
+    if(id === "dash")      p.innerHTML = viewDash();
     else if(id === "avaliacoes"){ p.innerHTML = viewAvaliacoes(); carregarMinhasAvaliacoes(); }
     else if(id === "consultas"){  p.innerHTML = viewConsultas();  carregarMinhasConsultas(); }
-    else if(id === "perfil")p.innerHTML = viewPerfil();
+    else if(id === "perfil"){ p.innerHTML = viewPerfil(); if(ME.role === "student") carregarTelegram(); }
     else if(id === "admin")p.innerHTML = viewAdmin();
     else if(id === "alunos"){    p.innerHTML = viewAlunos();    loadStudents(); }
     else if(id === "cadastrar"){ p.innerHTML = viewCadastrar(); loadStudents(); }
@@ -264,7 +264,11 @@
         <h3>📊 Sua evolução</h3>
         <p>Acompanhe peso, composição, sono e adesão — e envie seus reports pelo Telegram.</p>
         <a class="btn" href="dashboard.html">Abrir meu dashboard →</a>
-      </div>
+      </div>`;
+  }
+
+  function cardTelegram(){
+    return `
       <div class="card">
         <h3>💬 Reports pelo Telegram</h3>
         <div id="tgBox"><div class="empty">Carregando…</div></div>
@@ -418,7 +422,8 @@
         </div>
         <button class="btn small" id="pwBtn" onclick="definirSenha()">Salvar nova senha</button>
         <div class="msg" id="pwMsg"></div>
-      </div>`;
+      </div>
+      ${ME.role === "student" ? cardTelegram() : ""}`;
   }
 
   async function salvarNome(){
