@@ -56,6 +56,31 @@
   .msg.warn{display:block;background:#fff7ed;color:#b45309}
   .field input[readonly]{background:#faf3f8;color:var(--pink-deep);font-weight:800;cursor:not-allowed}
   .meta-cliente{margin-top:2px}
+
+  /* tela "Meus alunos": detalhe + coluna de alunos */
+  .alunos-layout{display:grid;grid-template-columns:1fr 258px;gap:16px;align-items:start;margin-bottom:16px}
+  .alunos-col{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;
+    box-shadow:0 8px 22px rgba(180,90,140,.06);position:sticky;top:86px}
+  .alunos-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .alunos-head h3{font-size:14px;font-weight:800;color:var(--pink-deep)}
+  .aluno-search{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:13px;margin-bottom:10px;font-family:inherit}
+  .aluno-search:focus{outline:2px solid #f9a8d4;border-color:#f9a8d4}
+  #alunosLista{max-height:60vh;overflow-y:auto}
+  .aluno-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;
+    border:none;background:none;padding:10px 10px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--txt);cursor:pointer}
+  .aluno-item:hover{background:#faf3f8}
+  .aluno-item.sel{background:linear-gradient(120deg,#fce7f3,#e0e7ff);color:var(--pink-deep);font-weight:800}
+  .aluno-item .ai-n{font-size:11px;font-weight:800;color:var(--muted);background:#f6eef4;border-radius:999px;padding:1px 8px;min-width:22px;text-align:center}
+  .aluno-detalhe{min-height:130px}
+  .det-nome{font-size:18px;font-weight:800}
+  .det-sub{font-size:12.5px;color:var(--muted);margin-top:3px;margin-bottom:16px}
+  .det-acoes{display:flex;flex-wrap:wrap;gap:8px}
+  .det-acoes .btn{margin-top:0}
+  @media(max-width:760px){
+    .alunos-layout{grid-template-columns:1fr}
+    .alunos-col{position:static;order:-1}
+    #alunosLista{max-height:230px}
+  }
   .empty{font-size:13px;color:var(--muted);padding:8px 0}
   .assess-item{font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
   .assess-item:last-child{border-bottom:none}
@@ -132,6 +157,7 @@
   });
 
   let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null, ASSESS_S = null, MANUAL_CALC = false;
+  let SELECTED_STUDENT = null, ATIVOS_CACHE = [];
 
   // campos das avaliações
   const DOBRAS = [
@@ -493,10 +519,20 @@
   /* ================= TELAS: PROFISSIONAL ================= */
   function viewAlunos(){
     return `<h2>Meus alunos</h2>
-      <div class="card">
-        <h3>👥 Ativos</h3>
-        <div id="studentsBox"><div class="empty">Carregando…</div></div>
+      <div class="alunos-layout">
+        <section class="card aluno-detalhe" id="alunoDetalhe">
+          <div class="empty">👉 Selecione um aluno na lista ao lado para ver as opções.</div>
+        </section>
+        <aside class="alunos-col">
+          <div class="alunos-head">
+            <h3>Alunos</h3>
+            <button class="btn small ghost" title="Buscar aluno" onclick="toggleBuscaAluno()">🔍</button>
+          </div>
+          <input id="alunoSearch" class="aluno-search" style="display:none" placeholder="Buscar aluno…" oninput="filtrarAlunos()">
+          <div id="alunosLista"><div class="empty">Carregando…</div></div>
+        </aside>
       </div>
+
       <div class="card" id="assessCard" style="display:none">
         <span class="close-x" onclick="fecharForm()">✕</span>
         <h3><span id="assessTitulo">➕ Nova avaliação —</span> <span id="assessStudentName"></span></h3>
@@ -632,7 +668,7 @@
   async function loadStudents(){
     const { data: studs, error } = await sb.from("profiles").select("*").eq("professional_id", ME.id);
     if(error){
-      const b=document.getElementById("studentsBox");
+      const b=document.getElementById("alunosLista");
       if(b) b.innerHTML = `<div class="empty">Erro ao carregar: ${esc(error.message)}</div>`;
       return;
     }
@@ -671,16 +707,79 @@
   }
 
   function renderStudents(){
-    const ativos = STUDENTS.filter(s => (s.status||"active") === "active");
+    const ativos = STUDENTS.filter(s => (s.status||"active") === "active")
+                           .sort((a,b)=> nomeAluno(a).localeCompare(nomeAluno(b),"pt-BR"));
     const arqs   = STUDENTS.filter(s => s.status === "archived");
-    const box = document.getElementById("studentsBox");
-    if(box) box.innerHTML = ativos.length
-      ? ativos.map(s=>linhaAluno(s,false)).join("")
-      : `<div class="empty">Nenhum aluno ativo. Vá em "Cadastrar aluno" para começar.</div>`;
+    ATIVOS_CACHE = ativos;
+
+    const busca = (document.getElementById("alunoSearch")||{}).value || "";
+    desenharListaAlunos(filtrar(ativos, busca));
+
+    // se o aluno selecionado ainda existe e está ativo, mantém o detalhe
+    if(SELECTED_STUDENT && ativos.some(s=>s.id===SELECTED_STUDENT)) selecionarAluno(SELECTED_STUDENT);
+    else if(SELECTED_STUDENT){ SELECTED_STUDENT=null; const d=document.getElementById("alunoDetalhe");
+      if(d) d.innerHTML = `<div class="empty">👉 Selecione um aluno na lista ao lado para ver as opções.</div>`; }
+
     const arq = document.getElementById("archivedBox");
     if(arq) arq.innerHTML = arqs.length
       ? arqs.map(s=>linhaAluno(s,true)).join("")
       : `<div class="empty">Nenhum aluno arquivado.</div>`;
+  }
+
+  function filtrar(lista, q){
+    q = (q||"").toLowerCase().trim();
+    if(!q) return lista;
+    return lista.filter(s => nomeAluno(s).toLowerCase().includes(q) || (s.email||"").toLowerCase().includes(q));
+  }
+
+  function desenharListaAlunos(lista){
+    const box = document.getElementById("alunosLista");
+    if(!box) return;
+    if(!lista.length){ box.innerHTML = `<div class="empty">Nenhum aluno encontrado.</div>`; return; }
+    box.innerHTML = lista.map(s=>{
+      const sel = SELECTED_STUDENT===s.id ? " sel" : "";
+      const n = ASSESS.filter(a=>a.student_id===s.id).length;
+      return `<button class="aluno-item${sel}" onclick="selecionarAluno('${s.id}')">
+        <span class="ai-nome">${esc(nomeAluno(s))}</span>
+        <span class="ai-n">${n}</span>
+      </button>`;
+    }).join("");
+  }
+
+  function filtrarAlunos(){
+    desenharListaAlunos(filtrar(ATIVOS_CACHE, (document.getElementById("alunoSearch")||{}).value));
+  }
+
+  function toggleBuscaAluno(){
+    const e = document.getElementById("alunoSearch");
+    if(!e) return;
+    const mostrar = e.style.display === "none";
+    e.style.display = mostrar ? "block" : "none";
+    if(mostrar){ e.focus(); } else { e.value=""; filtrarAlunos(); }
+  }
+
+  function selecionarAluno(id){
+    SELECTED_STUDENT = id;
+    const s = STUDENTS.find(x=>x.id===id);
+    desenharListaAlunos(filtrar(ATIVOS_CACHE, (document.getElementById("alunoSearch")||{}).value));
+    const det = document.getElementById("alunoDetalhe");
+    if(!det || !s) return;
+    const n = ASSESS.filter(a=>a.student_id===id).length;
+    det.innerHTML = `
+      <div class="det-head">
+        <div class="det-nome">${esc(nomeAluno(s))}</div>
+        <div class="det-sub">${s.email?esc(s.email)+" · ":""}${n} avaliação(ões)</div>
+      </div>
+      <div class="det-acoes">
+        <a class="btn small" href="dashboard.html?aluno=${id}">📊 Dashboard</a>
+        <button class="btn small" onclick="novaAvaliacao('${id}')">➕ Nova avaliação</button>
+        <button class="btn small ghost" onclick="verAvaliacoes('${id}')">📋 Ver avaliações</button>
+        <button class="btn small ghost" onclick="novaConsulta('${id}')">📅 Consultas</button>
+        <button class="btn small ghost" onclick="abrirMetas('${id}')">🎯 Metas</button>
+        <button class="btn small ghost" onclick="dadosCliente('${id}')">👤 Dados do cliente</button>
+        <button class="btn small ghost" onclick="arquivarAluno('${id}')">📁 Arquivar</button>
+      </div>
+      <div id="assessList_${id}" style="margin-top:6px"></div>`;
   }
 
   async function loadInvites(){
