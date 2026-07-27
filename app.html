@@ -788,8 +788,12 @@
   }
 
   function avaliacaoDetalhe(a, idx, podeEditar){
+    const umaCasa = ["body_fat","fat_mass","lean_mass"];
     const gerais = GERAIS.filter(([k])=>a[k]!=null)
-      .map(([k,r,un])=>`<div class="med"><span>${r}</span><b>${Number(a[k]).toLocaleString("pt-BR",{maximumFractionDigits:1})}${un}</b></div>`).join("");
+      .map(([k,r,un])=>{
+        const min = umaCasa.includes(k) ? 1 : 0;
+        return `<div class="med"><span>${r}</span><b>${Number(a[k]).toLocaleString("pt-BR",{minimumFractionDigits:min,maximumFractionDigits:1})}${un}</b></div>`;
+      }).join("");
     const dob = chips(a.skinfolds, DOBRAS, " mm");
     const per = chips(a.circumferences, PERIMETROS, " cm");
     const menu = podeEditar ? `<span class="menu-wrap">
@@ -970,6 +974,13 @@
 
   async function novaAvaliacao(id){
     const s = STUDENTS.find(x=>x.id===id);
+    // barra se faltar sexo ou data de nascimento (usados no cálculo)
+    if(!s || !s.sex || !s.birth_date){
+      dadosCliente(id);
+      const m = document.getElementById("cliMsg");
+      if(m){ m.className="msg warn"; m.textContent="Preencha o sexo e a data de nascimento deste cliente antes de criar a avaliação — eles são usados no cálculo da composição corporal."; }
+      return;
+    }
     montarCamposMedidas();
     EDIT_ID = null;
     document.getElementById("assessTitulo").textContent = "➕ Nova avaliação —";
