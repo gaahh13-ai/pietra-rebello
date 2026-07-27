@@ -53,6 +53,8 @@
   .msg{margin-top:10px;font-size:13px;padding:9px 11px;border-radius:9px;display:none;line-height:1.45}
   .msg.err{display:block;background:#fdecec;color:#c0392b}
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
+  .msg.warn{display:block;background:#fff7ed;color:#b45309}
+  .field input[readonly]{background:#faf3f8;color:var(--pink-deep);font-weight:800;cursor:not-allowed}
   .empty{font-size:13px;color:var(--muted);padding:8px 0}
   .assess-item{font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
   .assess-item:last-child{border-bottom:none}
@@ -433,8 +435,20 @@
           <label>Nome completo</label>
           <input id="myName" type="text" value="${esc(ME.full_name||"")}" placeholder="ex: Pietra Rebello">
         </div>
+        <div class="form-grid2">
+          <div class="field"><label>Sexo</label>
+            <select id="mySex">
+              <option value="">—</option>
+              <option value="M" ${ME.sex==="M"?"selected":""}>Masculino</option>
+              <option value="F" ${ME.sex==="F"?"selected":""}>Feminino</option>
+            </select>
+          </div>
+          <div class="field"><label>Data de nascimento</label>
+            <input id="myBirth" type="date" value="${ME.birth_date ? String(ME.birth_date).slice(0,10) : ""}">
+          </div>
+        </div>
         <div class="field"><label>E-mail</label><input type="text" value="${esc(ME.email||"")}" disabled></div>
-        <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar nome</button>
+        <button class="btn small" id="nameBtn" onclick="salvarNome()">Salvar dados</button>
         <div class="msg" id="nameMsg"></div>
       </div>
 
@@ -453,14 +467,17 @@
 
   async function salvarNome(){
     const v=document.getElementById("myName").value.trim();
+    const sex=document.getElementById("mySex").value || null;
+    const birth=document.getElementById("myBirth").value || null;
     const msg=document.getElementById("nameMsg"), btn=document.getElementById("nameBtn");
     if(!v){ msg.className="msg err"; msg.textContent="Digite seu nome."; return; }
     btn.disabled=true; msg.className="msg"; msg.textContent="";
-    const { error } = await sb.from("profiles").update({ full_name:v }).eq("id", ME.id);
+    const { error } = await sb.from("profiles").update({ full_name:v, sex, birth_date:birth }).eq("id", ME.id);
     btn.disabled=false;
     if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
-    ME.full_name = v;
-    montar();
+    ME.full_name = v; ME.sex = sex; ME.birth_date = birth;
+    msg.className="msg ok"; msg.textContent="Dados salvos!";
+    document.querySelector(".hello") && montar();
   }
 
   function viewAdmin(){
@@ -487,15 +504,33 @@
             <div class="field"><label>Data</label><input id="a_date" type="date"></div>
             <div class="field"><label>Peso (kg)</label><input id="a_weight" type="number" step="0.1" placeholder="ex: 68,5"></div>
             <div class="field"><label>Altura (cm)</label><input id="a_height" type="number" step="0.1" placeholder="ex: 175"></div>
-            <div class="field"><label>% Gordura</label><input id="a_bf" type="number" step="0.1" placeholder="ex: 14,2"></div>
-            <div class="field"><label>Massa magra (kg)</label><input id="a_lean" type="number" step="0.1"></div>
-            <div class="field"><label>Massa gorda (kg)</label><input id="a_fat" type="number" step="0.1"></div>
+            <div class="field"><label>Sexo</label>
+              <select id="a_sex">
+                <option value="">—</option>
+                <option value="M">Masculino</option>
+                <option value="F">Feminino</option>
+              </select>
+            </div>
+            <div class="field"><label>Data de nascimento</label><input id="a_birth" type="date"></div>
           </div>
         </div>
 
         <div class="grupo">
           <div class="grupo-tit">Dobras cutâneas (mm)</div>
           <div class="form-grid2" id="gridDobras"></div>
+        </div>
+
+        <div class="grupo">
+          <div class="grupo-tit">Composição corporal — calculada automaticamente</div>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">
+            Calculada a partir das 7 dobras, do peso, do sexo e da idade (Jackson &amp; Pollock).
+            Preencha as 7 dobras e os dados gerais para os valores aparecerem.</p>
+          <div class="form-grid2">
+            <div class="field"><label>% Gordura</label><input id="a_bf" type="number" step="0.1" readonly placeholder="—"></div>
+            <div class="field"><label>Massa gorda (kg)</label><input id="a_fat" type="number" step="0.1" readonly placeholder="—"></div>
+            <div class="field"><label>Massa magra (kg)</label><input id="a_lean" type="number" step="0.1" readonly placeholder="—"></div>
+          </div>
+          <div class="msg" id="calcMsg"></div>
         </div>
 
         <div class="grupo">
@@ -764,6 +799,89 @@
       `<div class="field"><label>${r}</label><input id="per_${k}" type="number" step="0.1"></div>`).join("");
   }
 
+  /* ---------- CÁLCULO DE COMPOSIÇÃO CORPORAL ----------
+     Jackson & Pollock (7 dobras) → densidade → Siri → % gordura */
+  function idadeAnos(dataNasc){
+    if(!dataNasc) return null;
+    const n = new Date(String(dataNasc).slice(0,10)+"T00:00:00");
+    if(isNaN(n)) return null;
+    const h = new Date();
+    let a = h.getFullYear() - n.getFullYear();
+    const m = h.getMonth() - n.getMonth();
+    if(m < 0 || (m === 0 && h.getDate() < n.getDate())) a--;
+    return a;
+  }
+
+  function somaSeteDobras(){
+    let soma = 0;
+    for(const [k] of DOBRAS){
+      const e = document.getElementById("dob_"+k);
+      if(!e || e.value === "") return null;   // exige as 7 dobras
+      const v = Number(e.value);
+      if(isNaN(v)) return null;
+      soma += v;
+    }
+    return soma;
+  }
+
+  function calcComposicao(sexo, idade, sigma7, peso){
+    if(!sexo || idade == null || !sigma7 || !peso) return null;
+    let BD;
+    if(sexo === "M")
+      BD = 1.112 - 0.00043499*sigma7 + 0.00000055*sigma7*sigma7 - 0.00028826*idade;
+    else
+      BD = 1.097 - 0.00046971*sigma7 + 0.00000056*sigma7*sigma7 - 0.00012828*idade;
+    const pctFat = (495/BD) - 450;           // Siri
+    if(!isFinite(pctFat) || pctFat <= 0 || pctFat >= 70) return null;
+    const massaGorda = peso * pctFat/100;
+    const massaMagra = peso - massaGorda;
+    return { pctFat, massaGorda, massaMagra };
+  }
+
+  function recalcularComposicao(){
+    const msg = document.getElementById("calcMsg");
+    const bf = document.getElementById("a_bf"), fat = document.getElementById("a_fat"), lean = document.getElementById("a_lean");
+    if(!bf) return;
+    const sexo  = (document.getElementById("a_sex")||{}).value || "";
+    const idade = idadeAnos((document.getElementById("a_birth")||{}).value);
+    const peso  = Number((document.getElementById("a_weight")||{}).value) || null;
+    const sigma = somaSeteDobras();
+
+    const r = calcComposicao(sexo, idade, sigma, peso);
+    if(r){
+      bf.value  = r.pctFat.toFixed(1);
+      fat.value = r.massaGorda.toFixed(1);
+      lean.value= r.massaMagra.toFixed(1);
+      if(msg){ msg.className="msg ok"; msg.textContent = `Calculado · Σ7 = ${sigma.toFixed(1)} mm · idade ${idade} anos`; }
+    } else {
+      bf.value=""; fat.value=""; lean.value="";
+      if(msg){
+        const faltam = [];
+        if(!sexo)          faltam.push("sexo");
+        if(idade == null)  faltam.push("data de nascimento");
+        if(!peso)          faltam.push("peso");
+        if(sigma == null)  faltam.push("as 7 dobras");
+        msg.className = faltam.length ? "msg warn" : "msg";
+        msg.textContent = faltam.length ? "Faltam: " + faltam.join(", ") + "." : "";
+      }
+    }
+  }
+
+  function prepararCalculo(s){
+    // preenche sexo/nascimento a partir do perfil do aluno
+    const sx = document.getElementById("a_sex"), bd = document.getElementById("a_birth");
+    if(sx) sx.value = (s && s.sex) || "";
+    if(bd) bd.value = (s && s.birth_date) ? String(s.birth_date).slice(0,10) : "";
+    // liga o recálculo ao vivo (uma vez só)
+    const card = document.getElementById("assessCard");
+    if(card && !card.dataset.calcOn){
+      card.dataset.calcOn = "1";
+      card.addEventListener("input", recalcularComposicao);
+      card.addEventListener("change", recalcularComposicao);
+    }
+    recalcularComposicao();
+  }
+
   function toggleAval(id){
     const el = document.getElementById(id);
     if(!el) return;
@@ -799,6 +917,7 @@
     DOBRAS.forEach(([k])=>põe("dob_"+k, a.skinfolds ? a.skinfolds[k] : null));
     PERIMETROS.forEach(([k])=>põe("per_"+k, a.circumferences ? a.circumferences[k] : null));
     põe("a_notes", a.notes);
+    prepararCalculo(s);
 
     const card = document.getElementById("assessCard");
     card.style.display = "block";
@@ -818,6 +937,7 @@
     ["a_weight","a_height","a_bf","a_lean","a_fat","a_notes"].forEach(f=>{const e=document.getElementById(f); if(e) e.value="";});
     DOBRAS.forEach(([k])=>{const e=document.getElementById("dob_"+k); if(e) e.value="";});
     PERIMETROS.forEach(([k])=>{const e=document.getElementById("per_"+k); if(e) e.value="";});
+    prepararCalculo(s);
     const card = document.getElementById("assessCard");
     card.style.display="block";
     const m=document.getElementById("assessMsg"); m.className="msg"; m.textContent="";
@@ -959,6 +1079,16 @@
       notes:    document.getElementById("a_notes").value.trim() || null,
       created_by: ME.id };
     btn.disabled=true; msg.className="msg"; msg.textContent="";
+
+    // grava sexo e nascimento do aluno no perfil dele (fonte do cálculo)
+    const sexo  = (document.getElementById("a_sex")||{}).value || null;
+    const nasc  = (document.getElementById("a_birth")||{}).value || null;
+    const s = STUDENTS.find(x=>x.id===student_id);
+    if(s && ((sexo && sexo!==s.sex) || (nasc && nasc!==(s.birth_date&&String(s.birth_date).slice(0,10))))){
+      await sb.from("profiles").update({ sex: sexo, birth_date: nasc }).eq("id", student_id);
+      s.sex = sexo; s.birth_date = nasc;
+    }
+
     let error;
     if(EDIT_ID){
       const { created_by, ...campos } = row;
