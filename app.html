@@ -131,7 +131,7 @@
     auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
   });
 
-  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null, ASSESS_S = null;
+  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null, ASSESS_S = null, MANUAL_CALC = false;
 
   // campos das avaliações
   const DOBRAS = [
@@ -517,7 +517,16 @@
         </div>
 
         <div class="grupo">
-          <div class="grupo-tit">Composição corporal — calculada automaticamente</div>
+          <div class="grupo-tit" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Composição corporal — calculada automaticamente</span>
+            <span class="menu-wrap">
+              <button type="button" class="btn small ghost dots" title="Opções" onclick="abrirMenu(event,'menuCalc')">⋮</button>
+              <span class="menu-drop" id="menuCalc" style="text-transform:none">
+                <button type="button" onclick="modoManual(true)">✏️ Editar manualmente</button>
+                <button type="button" onclick="modoManual(false)">↺ Voltar ao cálculo automático</button>
+              </span>
+            </span>
+          </div>
           <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">
             Calculada a partir das 7 dobras, do peso, do sexo e da idade (Jackson &amp; Pollock).
             Preencha as 7 dobras e os dados gerais para os valores aparecerem.</p>
@@ -879,7 +888,24 @@
     return { pctFat, massaGorda, massaMagra };
   }
 
+  function modoManual(manual){
+    MANUAL_CALC = manual;
+    ["a_bf","a_fat","a_lean"].forEach(id=>{
+      const e=document.getElementById(id); if(!e) return;
+      if(manual) e.removeAttribute("readonly"); else e.setAttribute("readonly","");
+    });
+    document.querySelectorAll(".menu-drop.open").forEach(m=>m.classList.remove("open"));
+    const msg = document.getElementById("calcMsg");
+    if(manual){
+      if(msg){ msg.className="msg warn"; msg.textContent="✏️ Edição manual ativada — você pode alterar os três valores. Eles não serão recalculados automaticamente."; }
+      const bf = document.getElementById("a_bf"); if(bf) bf.focus();
+    } else {
+      recalcularComposicao();
+    }
+  }
+
   function recalcularComposicao(){
+    if(MANUAL_CALC) return;   // não sobrescreve durante edição manual
     const msg = document.getElementById("calcMsg");
     const bf = document.getElementById("a_bf"), fat = document.getElementById("a_fat"), lean = document.getElementById("a_lean");
     if(!bf) return;
@@ -910,6 +936,8 @@
 
   function prepararCalculo(s){
     ASSESS_S = s || null;
+    MANUAL_CALC = false;
+    ["a_bf","a_fat","a_lean"].forEach(id=>{ const e=document.getElementById(id); if(e) e.setAttribute("readonly",""); });
     const info = document.getElementById("assessCliente");
     if(info){
       const idade = idadeAnos(s && s.birth_date);
