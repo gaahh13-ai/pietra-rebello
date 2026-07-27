@@ -55,6 +55,7 @@
   .msg.ok{display:block;background:#eafaf0;color:#1a8a4a}
   .msg.warn{display:block;background:#fff7ed;color:#b45309}
   .field input[readonly]{background:#faf3f8;color:var(--pink-deep);font-weight:800;cursor:not-allowed}
+  .meta-cliente{margin-top:2px}
   .empty{font-size:13px;color:var(--muted);padding:8px 0}
   .assess-item{font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
   .assess-item:last-child{border-bottom:none}
@@ -130,7 +131,7 @@
     auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
   });
 
-  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null;
+  let ME = null, STUDENTS = [], INVITES = [], ASSESS = [], VIEW = null, EDIT_ID = null, ASSESS_S = null;
 
   // campos das avaliações
   const DOBRAS = [
@@ -476,8 +477,10 @@
     btn.disabled=false;
     if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
     ME.full_name = v; ME.sex = sex; ME.birth_date = birth;
-    msg.className="msg ok"; msg.textContent="Dados salvos!";
-    document.querySelector(".hello") && montar();
+    msg.className="msg ok"; msg.textContent="✅ Dados salvos com sucesso!";
+    const h = document.querySelector(".hello");
+    const pn = primeiroNome();
+    if(h) h.innerHTML = pn ? "Olá, "+esc(pn)+" 👋" : "Olá! 👋";
   }
 
   function viewAdmin(){
@@ -504,15 +507,8 @@
             <div class="field"><label>Data</label><input id="a_date" type="date"></div>
             <div class="field"><label>Peso (kg)</label><input id="a_weight" type="number" step="0.1" placeholder="ex: 68,5"></div>
             <div class="field"><label>Altura (cm)</label><input id="a_height" type="number" step="0.1" placeholder="ex: 175"></div>
-            <div class="field"><label>Sexo</label>
-              <select id="a_sex">
-                <option value="">—</option>
-                <option value="M">Masculino</option>
-                <option value="F">Feminino</option>
-              </select>
-            </div>
-            <div class="field"><label>Data de nascimento</label><input id="a_birth" type="date"></div>
           </div>
+          <div class="meta-cliente" id="assessCliente"></div>
         </div>
 
         <div class="grupo">
@@ -541,6 +537,27 @@
         <div class="field" style="margin-top:16px"><label>Observação</label><textarea id="a_notes" rows="3" placeholder="opcional"></textarea></div>
         <button class="btn small" id="assessSaveBtn" onclick="salvarAvaliacao()">Salvar avaliação</button>
         <div class="msg" id="assessMsg"></div>
+      </div>
+
+      <div class="card" id="clienteCard" style="display:none">
+        <span class="close-x" onclick="fecharDados()">✕</span>
+        <h3>👤 Dados do cliente</h3>
+        <p>Nome, sexo e data de nascimento. Servem para o cálculo da composição corporal
+           e ficam visíveis para o cliente também.</p>
+        <input type="hidden" id="cliId">
+        <div class="field" style="margin-top:12px"><label>Nome completo</label><input id="cli_nome" type="text"></div>
+        <div class="form-grid2">
+          <div class="field"><label>Sexo</label>
+            <select id="cli_sex">
+              <option value="">—</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+            </select>
+          </div>
+          <div class="field"><label>Data de nascimento</label><input id="cli_birth" type="date"></div>
+        </div>
+        <button class="btn small" id="cliBtn" onclick="salvarDados()">Salvar dados</button>
+        <div class="msg" id="cliMsg"></div>
       </div>
 
       <div class="card" id="goalsCard" style="display:none">
@@ -632,8 +649,8 @@
          <span class="menu-wrap">
            <button class="btn small ghost dots" title="Mais opções" onclick="abrirMenu(event,'menu_${s.id}')">⋮</button>
            <span class="menu-drop" id="menu_${s.id}">
+             <button onclick="dadosCliente('${s.id}')">Dados do cliente</button>
              <button onclick="abrirMetas('${s.id}')">Definir metas</button>
-             <button onclick="renomearAluno('${s.id}')">Editar nome</button>
              <button onclick="arquivarAluno('${s.id}')">Arquivar</button>
            </span>
          </span>`;
@@ -719,13 +736,33 @@
     document.querySelectorAll(".menu-drop.open").forEach(m=>m.classList.remove("open"));
   });
 
-  async function renomearAluno(id){
+  function dadosCliente(id){
     const s = STUDENTS.find(x=>x.id===id);
-    const novo = prompt("Nome do aluno:", s?.full_name || "");
-    if(novo === null) return;
-    const { error } = await sb.from("profiles").update({ full_name: novo.trim()||null }).eq("id", id);
-    if(error){ alert("Erro ao salvar o nome: "+error.message); return; }
-    loadStudents();
+    document.getElementById("cliId").value = id;
+    document.getElementById("cli_nome").value = s?.full_name || "";
+    document.getElementById("cli_sex").value = s?.sex || "";
+    document.getElementById("cli_birth").value = s?.birth_date ? String(s.birth_date).slice(0,10) : "";
+    const m = document.getElementById("cliMsg"); m.className="msg"; m.textContent="";
+    const card = document.getElementById("clienteCard");
+    card.style.display = "block";
+    card.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function fecharDados(){ const c=document.getElementById("clienteCard"); if(c) c.style.display="none"; }
+
+  async function salvarDados(){
+    const id = document.getElementById("cliId").value;
+    const msg = document.getElementById("cliMsg"), btn = document.getElementById("cliBtn");
+    const nome  = document.getElementById("cli_nome").value.trim() || null;
+    const sex   = document.getElementById("cli_sex").value || null;
+    const birth = document.getElementById("cli_birth").value || null;
+    btn.disabled=true; msg.className="msg"; msg.textContent="";
+    const { error } = await sb.from("profiles").update({ full_name:nome, sex, birth_date:birth }).eq("id", id);
+    btn.disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Erro: "+error.message; return; }
+    const s = STUDENTS.find(x=>x.id===id);
+    if(s){ s.full_name=nome; s.sex=sex; s.birth_date=birth; }
+    msg.className="msg ok"; msg.textContent="✅ Dados salvos!";
+    renderStudents();
   }
 
   async function arquivarAluno(id){
@@ -842,8 +879,9 @@
     const msg = document.getElementById("calcMsg");
     const bf = document.getElementById("a_bf"), fat = document.getElementById("a_fat"), lean = document.getElementById("a_lean");
     if(!bf) return;
-    const sexo  = (document.getElementById("a_sex")||{}).value || "";
-    const idade = idadeAnos((document.getElementById("a_birth")||{}).value);
+    const s = ASSESS_S || {};
+    const sexo  = s.sex || "";
+    const idade = idadeAnos(s.birth_date);
     const peso  = Number((document.getElementById("a_weight")||{}).value) || null;
     const sigma = somaSeteDobras();
 
@@ -852,27 +890,32 @@
       bf.value  = r.pctFat.toFixed(1);
       fat.value = r.massaGorda.toFixed(1);
       lean.value= r.massaMagra.toFixed(1);
-      if(msg){ msg.className="msg ok"; msg.textContent = `Calculado · Σ7 = ${sigma.toFixed(1)} mm · idade ${idade} anos`; }
+      if(msg){ msg.className="msg ok"; msg.textContent = `Calculado · Σ7 = ${sigma.toFixed(1)} mm · idade ${idade} anos · ${sexo==="M"?"masculino":"feminino"}`; }
     } else {
       bf.value=""; fat.value=""; lean.value="";
       if(msg){
         const faltam = [];
-        if(!sexo)          faltam.push("sexo");
-        if(idade == null)  faltam.push("data de nascimento");
+        if(!sexo || idade == null) faltam.push("sexo e data de nascimento do cliente (edite em ⋮ → Dados do cliente)");
         if(!peso)          faltam.push("peso");
         if(sigma == null)  faltam.push("as 7 dobras");
         msg.className = faltam.length ? "msg warn" : "msg";
-        msg.textContent = faltam.length ? "Faltam: " + faltam.join(", ") + "." : "";
+        msg.textContent = faltam.length ? "Faltam: " + faltam.join("; ") + "." : "";
       }
     }
   }
 
   function prepararCalculo(s){
-    // preenche sexo/nascimento a partir do perfil do aluno
-    const sx = document.getElementById("a_sex"), bd = document.getElementById("a_birth");
-    if(sx) sx.value = (s && s.sex) || "";
-    if(bd) bd.value = (s && s.birth_date) ? String(s.birth_date).slice(0,10) : "";
-    // liga o recálculo ao vivo (uma vez só)
+    ASSESS_S = s || null;
+    const info = document.getElementById("assessCliente");
+    if(info){
+      const idade = idadeAnos(s && s.birth_date);
+      const partes = [];
+      if(s && s.sex) partes.push(s.sex==="M" ? "Masculino" : "Feminino");
+      if(idade != null) partes.push(idade + " anos");
+      info.innerHTML = partes.length
+        ? `<span class="tag" style="background:#eef4ff;color:#1d4ed8;border-color:#c7dbff">${partes.join(" · ")}</span>`
+        : `<span class="tag">defina sexo e nascimento em ⋮ → Dados do cliente</span>`;
+    }
     const card = document.getElementById("assessCard");
     if(card && !card.dataset.calcOn){
       card.dataset.calcOn = "1";
@@ -925,7 +968,7 @@
     card.scrollIntoView({behavior:"smooth",block:"center"});
   }
 
-  function novaAvaliacao(id){
+  async function novaAvaliacao(id){
     const s = STUDENTS.find(x=>x.id===id);
     montarCamposMedidas();
     EDIT_ID = null;
@@ -942,6 +985,16 @@
     card.style.display="block";
     const m=document.getElementById("assessMsg"); m.className="msg"; m.textContent="";
     card.scrollIntoView({behavior:"smooth",block:"center"});
+
+    // pré-preenche peso e altura com a última avaliação (a nutri pode alterar)
+    const { data } = await sb.from("assessments").select("weight,height")
+      .eq("student_id", id).order("date",{ascending:false}).limit(1);
+    if(data && data[0]){
+      const w=document.getElementById("a_weight"), h=document.getElementById("a_height");
+      if(w && data[0].weight != null && w.value==="") w.value = data[0].weight;
+      if(h && data[0].height != null && h.value==="") h.value = data[0].height;
+      recalcularComposicao();
+    }
   }
   function fecharForm(){ const c=document.getElementById("assessCard"); if(c) c.style.display="none"; }
 
@@ -1079,15 +1132,6 @@
       notes:    document.getElementById("a_notes").value.trim() || null,
       created_by: ME.id };
     btn.disabled=true; msg.className="msg"; msg.textContent="";
-
-    // grava sexo e nascimento do aluno no perfil dele (fonte do cálculo)
-    const sexo  = (document.getElementById("a_sex")||{}).value || null;
-    const nasc  = (document.getElementById("a_birth")||{}).value || null;
-    const s = STUDENTS.find(x=>x.id===student_id);
-    if(s && ((sexo && sexo!==s.sex) || (nasc && nasc!==(s.birth_date&&String(s.birth_date).slice(0,10))))){
-      await sb.from("profiles").update({ sex: sexo, birth_date: nasc }).eq("id", student_id);
-      s.sex = sexo; s.birth_date = nasc;
-    }
 
     let error;
     if(EDIT_ID){
