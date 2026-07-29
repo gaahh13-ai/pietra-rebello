@@ -228,6 +228,11 @@
     montar();
   }
 
+  /* profissionais com o módulo de treino habilitado (por enquanto por e-mail).
+     Depois vira uma configuração por profissional no banco. */
+  const TREINO_ATIVO = ["teste@profissional.com.br"];
+  function temTreino(){ return TREINO_ATIVO.includes((ME.email||"").toLowerCase()); }
+
   /* ================= MENU / LAYOUT ================= */
   function menuFor(role){
     if(role === "student") return [
@@ -238,11 +243,12 @@
     ];
     const m = [
       {id:"alunos",     ico:"👥", label:"Meus alunos"},
-      {id:"cadastrar",  ico:"➕", label:"Cadastrar aluno"},
-      {id:"exercicios", ico:"🏋️", label:"Exercícios"},
-      {id:"inativos",   ico:"📁", label:"Alunos inativos"},
-      {id:"perfil",     ico:"👤", label:"Meu perfil"}
+      {id:"cadastrar",  ico:"➕", label:"Cadastrar aluno"}
     ];
+    // módulo de treino só para profissionais habilitados (personal). Nutri (Pietra) não vê.
+    if(temTreino()) m.push({id:"exercicios", ico:"🏋️", label:"Exercícios"});
+    m.push({id:"inativos", ico:"📁", label:"Alunos inativos"});
+    m.push({id:"perfil",   ico:"👤", label:"Meu perfil"});
     if(role === "creator") m.push({id:"admin", ico:"🛠️", label:"Painel do criador"});
     return m;
   }
